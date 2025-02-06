@@ -1,13 +1,13 @@
 import React from "react";
 
 export default function Title({
-	children,
+  children,
 }: Readonly<{ children: React.ReactNode }>) {
-	return (
-		<div className="mb-8">
-			<span className="inline-block px-4 py-2 text-md rounded-2xl cursor-pointer border bg-gray-100 border-gray-200 text-gray-800 font-bold">
-				{children}
-			</span>
-		</div>
-	);
+  return (
+    <div className="mb-6">
+      <span className="sm:text-md inline-block cursor-pointer rounded-2xl border border-gray-200 bg-gray-100 px-4 py-2 text-base font-bold text-gray-800">
+        {children}
+      </span>
+    </div>
+  );
 }

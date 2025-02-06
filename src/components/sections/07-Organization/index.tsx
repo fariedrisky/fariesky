@@ -60,7 +60,7 @@ export default function Organization() {
 	};
 
 	return (
-		<section className="max-w-3xl">
+		<section>
 			<Title>{organization.title}</Title>
 
 			<div className="space-y-4">
@@ -68,7 +68,7 @@ export default function Organization() {
 					(organization: OrganizationType, index: number) => (
 						<Card
 							key={index}
-							className="!bg-white !rounded-2xl !overflow-hidden !p-0"
+							className="!bg-white  !overflow-hidden !p-0"
 						>
 							<motion.div
 								initial={false}

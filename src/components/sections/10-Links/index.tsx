@@ -13,7 +13,7 @@ const iconComponents = {
 
 export default function Links() {
 	return (
-		<section className="max-w-3xl">
+		<section>
 			<Title>{links.title}</Title>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -34,7 +34,7 @@ export default function Links() {
 							<Card className="flex items-center justify-between hover:scale-105 active:scale-95 transition-all duration-300">
 								<div className="flex items-center gap-3">
 									<IconComponent className="w-5 h-5 text-gray-600" />
-									<span className="text-lg text-gray-700">
+									<span className="text-base sm:text-lg text-gray-700">
 										{link.title}
 									</span>
 								</div>
