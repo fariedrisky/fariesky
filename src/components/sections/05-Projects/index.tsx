@@ -59,7 +59,7 @@ export default function Projects() {
                 />
               </div>
 
-              <h3 className="mb-2 truncate px-2 text-lg font-medium">
+              <h3 className="mb-2 truncate px-2 text-lg font-semibold">
                 {project.title}
               </h3>
               <p className="mb-4 flex-grow px-2 text-sm text-gray-600">
