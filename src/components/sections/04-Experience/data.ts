@@ -1,7 +1,7 @@
 import { ExperienceData } from "./types";
 
 export const experience: ExperienceData = {
-    title: "EXPERIENCE",
+    title: "Experience",
     experiences: [
         {
             company: "Kensen Grik Teknokons",

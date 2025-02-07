@@ -1,7 +1,7 @@
 import { LinksData } from "./types";
 
 export const links: LinksData = {
-    title: "LINKS",
+    title: "Links",
     links: [
         {
             title: "Instagram",

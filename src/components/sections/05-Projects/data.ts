@@ -1,7 +1,7 @@
 import { ProjectsData } from "./types";
 
 export const projectsData: ProjectsData = {
-    title: "PROJECTS",
+    title: "Projects",
     projects: [
         {
             id: 1,

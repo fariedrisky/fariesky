@@ -1,14 +1,19 @@
-// next.config.ts
-import { NextConfig } from 'next';
+import type { NextConfig } from 'next';
 
 const config: NextConfig = {
-  webpack: (config) => {
-    config.module.rules.push({
-      test: /\.(woff|woff2|eot|ttf|otf)$/i,
-      type: 'asset/resource',
-    });
-    return config;
-  },
+  experimental: {
+    turbo: {
+      rules: {
+        // Configure font file handling
+        '**/*.{woff,woff2,eot,ttf,otf}': [{
+          loader: 'asset',
+          options: {
+            type: 'asset/resource'
+          }
+        }]
+      }
+    }
+  }
 };
 
 export default config;

@@ -4,6 +4,7 @@ import { MapPin, Phone, Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profile } from "./data";
+import { DownloadCV } from "@/components/cv/03-DownloadCV";
 
 interface TabletProfileProps {
   onContactClick: () => void;
@@ -51,9 +52,7 @@ export default function TabletProfile({ onContactClick }: TabletProfileProps) {
               </div>
             </div>
             <div className="flex flex-col gap-3">
-              <Button variant="outline" className="w-full rounded-xl">
-                Download CV
-              </Button>
+              <DownloadCV />
               <Button
                 className="w-full rounded-xl bg-gray-900 text-white hover:bg-gray-800"
                 onClick={onContactClick}

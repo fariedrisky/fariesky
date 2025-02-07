@@ -1,7 +1,7 @@
 import { OrganizationData } from "./types";
 
 export const organization: OrganizationData = {
-    title: "ORGANIZATION",
+    title: "Organization",
     organizations: [
         {
             name: "Himpunan Mahasiswa Informatika (HMIF) USK",

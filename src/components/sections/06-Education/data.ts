@@ -1,7 +1,7 @@
 import { EducationData } from "./types";
 
 export const education: EducationData = {
-    title: "EDUCATION",
+    title: "Education",
     educations: [
         {
             school: "Syiah Kuala University",

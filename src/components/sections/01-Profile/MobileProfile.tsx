@@ -5,6 +5,7 @@ import { MapPin, Phone, Mail, X, ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profile } from "./data";
+import { DownloadCV } from "@/components/cv/03-DownloadCV";
 
 interface MobileProfileProps {
   onContactClick: () => void;
@@ -100,9 +101,7 @@ export default function MobileProfile({ onContactClick }: MobileProfileProps) {
         <div className="overflow-hidden">
           <CardContent className="!px-4 !pb-4 !pt-0">
             <div className="flex flex-col gap-2">
-              <Button variant="outline" className="w-full rounded-xl text-sm">
-                Download CV
-              </Button>
+              <DownloadCV />
               <Button
                 className="w-full rounded-xl bg-gray-900 text-sm text-white hover:bg-gray-800"
                 onClick={onContactClick}

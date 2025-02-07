@@ -1,7 +1,7 @@
 import { ContactData } from './types';
 
 export const contactData: ContactData = {
-    title: "CONTACT ME",
+    title: "Contact Me",
     fields: {
         name: "Name",
         email: "Email",

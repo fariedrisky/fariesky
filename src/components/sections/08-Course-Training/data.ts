@@ -1,7 +1,7 @@
 import { CourseData } from "./types";
 
 export const course: CourseData = {
-    title: "COURSE / TRAINING",
+    title: "Course / Training",
     courses: [
         {
             name: "Web Programming",

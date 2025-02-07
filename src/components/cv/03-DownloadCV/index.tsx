@@ -2,7 +2,7 @@
 "use client";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/Button";
-import { CVDocument } from "./CVDocument";
+import CVDocument from "../01-CVDocument";
 import { profile } from "@/components/sections/01-Profile/data";
 
 export const DownloadCV = () => (

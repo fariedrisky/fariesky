@@ -1,7 +1,7 @@
 import { LanguageData } from "./types";
 
 export const languages: LanguageData = {
-    title: "LANGUAGES",
+    title: "Languages",
     languages: [
         {
             name: "Indonesian",
