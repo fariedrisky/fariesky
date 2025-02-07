@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Textarea from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { Loader2 } from "lucide-react";
 
 export default function Contact() {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,6 +21,12 @@ export default function Contact() {
     e.preventDefault();
     setIsLoading(true);
 
+    if (!formData.name || !formData.email || !formData.message) {
+      toast.error("All fields are required");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/send", {
         method: "POST",
@@ -29,22 +36,25 @@ export default function Contact() {
 
       const data = await response.json();
 
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send");
+      }
+
       if (data.success) {
+        toast.success(data.message);
         setFormData({ name: "", email: "", message: "" });
-        toast.success("Message sent successfully!");
-      } else {
-        toast.error(data.error?.message || "Failed to send message");
       }
     } catch (err) {
-      console.error("Error sending message:", err);
-      toast.error("Failed to send message. Please try again.");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to send message",
+      );
     } finally {
       setIsLoading(false);
     }
   };
+
   return (
     <section>
-      <Toaster position="top-center" />
       <Title>{contactData.title}</Title>
 
       <Card className="!p-6">
@@ -89,7 +99,14 @@ export default function Contact() {
               className="w-full bg-black text-white"
               disabled={isLoading}
             >
-              {isLoading ? "Sending..." : contactData.submitText}
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  Sending
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              ) : (
+                contactData.submitText
+              )}
             </Button>
           </form>
         </CardContent>
