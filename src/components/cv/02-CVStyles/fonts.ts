@@ -1,23 +1,23 @@
 export const fonts = [
     {
-        family: "LibreBaskerville",
+        family: "Georgia",
         format: "truetype",
-        src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/LibreBaskerville-Regular.ttf`,
+        src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/georgia.ttf`,
         fontWeight: 400,
         fontStyle: "normal",
     },
     {
-        family: "LibreBaskerville",
+        family: "Georgia",
         format: "truetype",
-        src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/LibreBaskerville-Bold.ttf`,
+        src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/georgiab.ttf`,
         fontWeight: 700,
         fontStyle: "bold",
     },
     {
-        family: "LibreBaskerville",
+        family: "Georgia",
         format: "truetype",
-        src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/LibreBaskerville-Italic.ttf`,
+        src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/georgiai.ttf`,
         fontWeight: 400,
         fontStyle: "italic",
     },
-] as const;
+];

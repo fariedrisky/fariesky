@@ -3,7 +3,7 @@ import { StyleSheet } from "@react-pdf/renderer";
 export const styles = StyleSheet.create({
   page: {
     padding: "40 40",
-    fontFamily: "LibreBaskerville",
+    fontFamily: "Georgia",
     backgroundColor: "#FFFFFF",
   },
   header: {
@@ -12,15 +12,13 @@ export const styles = StyleSheet.create({
   },
   name: {
     fontSize: 16,
-    fontFamily: "LibreBaskerville",
-    fontStyle: "bold",
     fontWeight: 700,
+    fontStyle: "bold",
     marginBottom: 8,
     color: "#000000",
   },
   contact: {
     fontSize: 9.0,
-    fontFamily: "LibreBaskerville",
     color: "#000000",
     lineHeight: 1.4,
   },
@@ -33,7 +31,6 @@ export const styles = StyleSheet.create({
   },
   description: {
     fontSize: 9.5,
-    fontFamily: "LibreBaskerville",
     lineHeight: 1.5,
     color: "#000000",
     textAlign: "justify",
@@ -44,7 +41,6 @@ export const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 14,
-    fontFamily: "LibreBaskerville",
     fontWeight: 700,
     fontStyle: "bold",
     marginBottom: 4,
@@ -56,18 +52,15 @@ export const styles = StyleSheet.create({
   },
   skillsText: {
     fontSize: 9.5,
-    fontFamily: "LibreBaskerville",
     lineHeight: 1.5,
     color: "#000000",
   },
-  // Common styles for column layout
   leftColumn: {
     marginRight: "6%",
   },
   rightColumn: {
     marginLeft: 0,
   },
-  // Experience styles
   experienceContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -83,14 +76,12 @@ export const styles = StyleSheet.create({
   },
   roleCompany: {
     fontSize: 12,
-    fontFamily: "LibreBaskerville",
     fontWeight: 700,
     fontStyle: "bold",
     marginBottom: 4,
   },
   periodLocation: {
     fontSize: 9,
-    fontFamily: "LibreBaskerville",
     marginBottom: 4,
   },
   descriptionList: {
@@ -98,7 +89,6 @@ export const styles = StyleSheet.create({
   },
   descriptionItem: {
     fontSize: 9,
-    fontFamily: "LibreBaskerville",
     lineHeight: 1.5,
     marginBottom: 3,
     display: "flex",
@@ -112,7 +102,6 @@ export const styles = StyleSheet.create({
     flex: 1,
     textAlign: "justify",
   },
-  // Education styles
   educationContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -128,22 +117,18 @@ export const styles = StyleSheet.create({
   },
   schoolName: {
     fontSize: 12,
-    fontFamily: "LibreBaskerville",
     fontWeight: 700,
     fontStyle: "bold",
     marginBottom: 4,
   },
   degreeText: {
     fontSize: 9,
-    fontFamily: "LibreBaskerville",
     marginBottom: 2,
   },
   scoreText: {
     fontSize: 9,
-    fontFamily: "LibreBaskerville",
     marginTop: 2,
   },
-  // Organization specific styles
   organizationContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -165,19 +150,16 @@ export const styles = StyleSheet.create({
   },
   organizationName: {
     fontSize: 12,
-    fontFamily: "LibreBaskerville",
     fontWeight: 700,
     fontStyle: "bold",
     marginBottom: 4,
   },
   organizationRole: {
     fontSize: 10,
-    fontFamily: "LibreBaskerville",
     marginBottom: 2,
   },
   organizationPeriodLocation: {
     fontSize: 9,
-    fontFamily: "LibreBaskerville",
     marginBottom: 4,
     color: "#666666",
   },
@@ -186,13 +168,11 @@ export const styles = StyleSheet.create({
   },
   organizationDescriptionItem: {
     fontSize: 9,
-    fontFamily: "LibreBaskerville",
     lineHeight: 1.5,
     marginBottom: 3,
     display: "flex",
     flexDirection: "row",
   },
-  // Course specific styles
   courseContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -208,7 +188,6 @@ export const styles = StyleSheet.create({
   },
   courseTitle: {
     fontSize: 12,
-    fontFamily: "LibreBaskerville",
     fontWeight: 700,
     fontStyle: "bold",
     marginBottom: 4,
@@ -221,12 +200,10 @@ export const styles = StyleSheet.create({
   },
   courseProvider: {
     fontSize: 10,
-    fontFamily: "LibreBaskerville",
     marginBottom: 2,
   },
   coursePeriodLocation: {
     fontSize: 9,
-    fontFamily: "LibreBaskerville",
     marginBottom: 4,
     color: "#666666",
   },
@@ -235,7 +212,6 @@ export const styles = StyleSheet.create({
   },
   courseDescriptionItem: {
     fontSize: 9,
-    fontFamily: "LibreBaskerville",
     lineHeight: 1.5,
     marginBottom: 3,
     display: "flex",
@@ -243,7 +219,6 @@ export const styles = StyleSheet.create({
   },
   certificateLink: {
     fontSize: 9,
-    fontFamily: "LibreBaskerville",
     color: "#0000EE",
     textDecoration: "underline",
     marginTop: 2,
@@ -263,14 +238,12 @@ export const styles = StyleSheet.create({
   },
   languageName: {
     fontSize: 12,
-    fontFamily: "LibreBaskerville",
     fontWeight: 700,
     fontStyle: "bold",
     marginBottom: 4,
   },
   languageLevel: {
     fontSize: 9,
-    fontFamily: "LibreBaskerville",
     color: "#666666",
   },
 });

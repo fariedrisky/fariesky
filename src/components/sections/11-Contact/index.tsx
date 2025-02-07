@@ -52,7 +52,7 @@ export default function Contact() {
 
   return (
     <section>
-      <Title>Contact Us</Title>
+      <Title>Contact Me</Title>
       <Card className="!p-6">
         <CardContent className="!p-0">
           <form onSubmit={handleSubmit} className="space-y-6" autoComplete="on">
