@@ -38,6 +38,7 @@ export async function POST(request: Request) {
             padding: 24px;
             border-radius: 24px 24px 0 0;
             border: 1px solid #eee;
+            background: #fff;
 
         }
         .content {
