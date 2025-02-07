@@ -1,23 +1,24 @@
-// components/cv/DownloadCV.tsx
+// components/cv/03-DownloadCV/index.tsx
 "use client";
-import { PDFDownloadLink } from "@react-pdf/renderer";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/Button";
-import CVDocument from "../01-CVDocument";
-import { profile } from "@/components/sections/01-Profile/data";
 
-export const DownloadCV = () => (
-  <PDFDownloadLink
-    document={<CVDocument profile={profile} />}
-    fileName={`CV - ${profile.name}.pdf`}
-  >
-    {({ loading }) => (
-      <Button
-        variant="outline"
-        className="w-full rounded-xl"
-        disabled={loading}
-      >
-        {loading ? "Generating CV..." : "Download CV"}
+// Dynamically import the PDFDownloadButton with no SSR
+const PDFDownloadButton = dynamic(
+  () =>
+    import("@/components/cv/03-DownloadCV/PDFDownloadButton").then((mod) => ({
+      default: mod.PDFDownloadButton,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <Button variant="outline" className="w-full rounded-xl" disabled>
+        Loading...
       </Button>
-    )}
-  </PDFDownloadLink>
+    ),
+  },
 );
+
+export default function DownloadCV() {
+  return <PDFDownloadButton />;
+}

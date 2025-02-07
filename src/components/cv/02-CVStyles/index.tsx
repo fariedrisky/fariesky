@@ -60,6 +60,14 @@ export const styles = StyleSheet.create({
     lineHeight: 1.5,
     color: "#000000",
   },
+  // Common styles for column layout
+  leftColumn: {
+    marginRight: "6%",
+  },
+  rightColumn: {
+    marginLeft: 0,
+  },
+  // Experience styles
   experienceContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -69,12 +77,6 @@ export const styles = StyleSheet.create({
     width: "47%",
     marginBottom: 16,
     paddingRight: 15,
-  },
-  leftColumn: {
-    marginRight: "6%",
-  },
-  rightColumn: {
-    marginLeft: 0,
   },
   experienceHeader: {
     marginBottom: 6,
@@ -110,12 +112,19 @@ export const styles = StyleSheet.create({
     flex: 1,
     textAlign: "justify",
   },
-  // Education specific styles
+  // Education styles
   educationContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginTop: 8,
   },
   educationItem: {
-    marginBottom: 12,
+    width: "47%",
+    marginBottom: 16,
+    paddingRight: 15,
+  },
+  educationHeader: {
+    marginBottom: 6,
   },
   schoolName: {
     fontSize: 12,
@@ -133,5 +142,135 @@ export const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: "LibreBaskerville",
     marginTop: 2,
+  },
+  // Organization specific styles
+  organizationContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
+  },
+  organizationItem: {
+    width: "47%",
+    marginBottom: 16,
+    paddingRight: 15,
+  },
+  organizationHeader: {
+    marginBottom: 6,
+  },
+  organizationLogo: {
+    width: 40,
+    height: 40,
+    marginBottom: 4,
+    objectFit: "contain",
+  },
+  organizationName: {
+    fontSize: 12,
+    fontFamily: "LibreBaskerville",
+    fontWeight: 700,
+    fontStyle: "bold",
+    marginBottom: 4,
+  },
+  organizationRole: {
+    fontSize: 10,
+    fontFamily: "LibreBaskerville",
+    marginBottom: 2,
+  },
+  organizationPeriodLocation: {
+    fontSize: 9,
+    fontFamily: "LibreBaskerville",
+    marginBottom: 4,
+    color: "#666666",
+  },
+  organizationDescriptionList: {
+    marginTop: 4,
+  },
+  organizationDescriptionItem: {
+    fontSize: 9,
+    fontFamily: "LibreBaskerville",
+    lineHeight: 1.5,
+    marginBottom: 3,
+    display: "flex",
+    flexDirection: "row",
+  },
+  // Course specific styles
+  courseContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
+  },
+  courseItem: {
+    width: "47%",
+    marginBottom: 16,
+    paddingRight: 15,
+  },
+  courseHeader: {
+    marginBottom: 6,
+  },
+  courseTitle: {
+    fontSize: 12,
+    fontFamily: "LibreBaskerville",
+    fontWeight: 700,
+    fontStyle: "bold",
+    marginBottom: 4,
+  },
+  courseLogo: {
+    width: 40,
+    height: 40,
+    marginBottom: 4,
+    objectFit: "contain",
+  },
+  courseProvider: {
+    fontSize: 10,
+    fontFamily: "LibreBaskerville",
+    marginBottom: 2,
+  },
+  coursePeriodLocation: {
+    fontSize: 9,
+    fontFamily: "LibreBaskerville",
+    marginBottom: 4,
+    color: "#666666",
+  },
+  courseDescriptionList: {
+    marginTop: 4,
+  },
+  courseDescriptionItem: {
+    fontSize: 9,
+    fontFamily: "LibreBaskerville",
+    lineHeight: 1.5,
+    marginBottom: 3,
+    display: "flex",
+    flexDirection: "row",
+  },
+  certificateLink: {
+    fontSize: 9,
+    fontFamily: "LibreBaskerville",
+    color: "#0000EE",
+    textDecoration: "underline",
+    marginTop: 2,
+  },
+  languageContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
+  },
+  languageItem: {
+    width: "47%",
+    marginBottom: 16,
+    paddingRight: 15,
+  },
+  languageHeader: {
+    marginBottom: 6,
+  },
+  languageName: {
+    fontSize: 12,
+    fontFamily: "LibreBaskerville",
+    fontWeight: 700,
+    fontStyle: "bold",
+    marginBottom: 4,
+  },
+  languageLevel: {
+    fontSize: 9,
+    fontFamily: "LibreBaskerville",
+    color: "#666666",
   },
 });
