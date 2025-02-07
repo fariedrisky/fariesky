@@ -4,7 +4,7 @@ import { MapPin, Phone, Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profile } from "./data";
-import { DownloadCV } from "@/components/cv/03-DownloadCV";
+import DownloadCV from "@/components/cv/03-DownloadCV";
 
 interface TabletProfileProps {
   onContactClick: () => void;
