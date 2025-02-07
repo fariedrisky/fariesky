@@ -63,14 +63,14 @@ export default function Experience() {
       <div className="space-y-4">
         {experience.experiences.map(
           (experience: ExperienceType, index: number) => (
-            <Card key={index} className="overflow-hidden !p-0">
+            <Card key={index} className="!p-0">
               <div
                 className="relative cursor-pointer"
                 onClick={() =>
                   setExpandedIndex(expandedIndex === index ? null : index)
                 }
               >
-                <CardContent className="flex flex-col justify-between !p-4 sm:flex-row sm:items-start">
+                <CardContent className="flex flex-col justify-between p-4 sm:flex-row sm:items-start">
                   <div className="flex gap-4">
                     <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl">
                       <LogoComponent experience={experience} index={index} />
@@ -139,8 +139,16 @@ export default function Experience() {
                 }`}
               >
                 <div className="overflow-hidden">
-                  <CardContent className="!px-4 !pb-4 !pl-20 !pt-2">
-                    <ul className="list-disc space-y-2 text-sm sm:text-base">
+                  <CardContent
+                    onClick={() => {
+                      setExpandedIndex(null);
+                    }}
+                    className="!px-4 !pb-4 !pl-20 !pt-2"
+                  >
+                    <ul
+                      className="list-disc space-y-2 text-sm sm:text-base"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {experience.description.map(
                         (item: string, idx: number) => (
                           <li key={idx} className="text-gray-600">

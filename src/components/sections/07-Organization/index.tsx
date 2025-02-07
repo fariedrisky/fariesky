@@ -121,8 +121,16 @@ export default function Organization() {
                 }`}
               >
                 <div className="overflow-hidden">
-                  <CardContent className="!px-4 !pb-4 !pl-20 !pt-2">
-                    <ul className="list-disc space-y-2">
+                  <CardContent
+                    onClick={() => {
+                      setExpandedIndex(null);
+                    }}
+                    className="!px-4 !pb-4 !pl-20 !pt-2"
+                  >
+                    <ul
+                      className="list-disc space-y-2 text-sm sm:text-base"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {organization.description.map(
                         (item: string, idx: number) => (
                           <li key={idx} className="text-gray-600">
