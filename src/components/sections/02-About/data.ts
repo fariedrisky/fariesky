@@ -1,6 +1,6 @@
 import { AboutData } from './types';
 
-export const aboutData: AboutData = {
+export const about: AboutData = {
     title: "ABOUT",
     description: [
         "A highly motivated web developer with a focus on user-centered websites.",

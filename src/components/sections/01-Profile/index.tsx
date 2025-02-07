@@ -4,6 +4,7 @@ import { MapPin, Phone, Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profile } from "./data";
+import { DownloadCV } from "@/components/cv/DownloadCV";
 import MobileProfile from "./MobileProfile";
 import TabletProfile from "./TabletProfile";
 
@@ -19,17 +20,14 @@ export default function Profile({ variant }: ProfileProps) {
     });
   };
 
-  // If mobile variant is selected
   if (variant === "mobile") {
     return <MobileProfile onContactClick={handleContactClick} />;
   }
 
-  // If tablet variant is selected
   if (variant === "tablet") {
     return <TabletProfile onContactClick={handleContactClick} />;
   }
 
-  // Desktop variant
   return (
     <Card className="w-full bg-white p-6">
       <CardContent className="p-0">
@@ -70,9 +68,7 @@ export default function Profile({ variant }: ProfileProps) {
 
             <div className="mt-6">
               <div className="flex flex-col gap-3">
-                <Button variant="outline" className="w-full rounded-xl">
-                  Download CV
-                </Button>
+                <DownloadCV />
                 <Button
                   className="w-full rounded-xl bg-gray-900 text-white hover:bg-gray-800"
                   onClick={handleContactClick}
