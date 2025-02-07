@@ -2,21 +2,21 @@ export const fonts = [
     {
         family: "Georgia",
         format: "truetype",
-        src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/georgia.ttf`,
+        src: "/fonts/georgia.ttf",  // Simplified path
         fontWeight: 400,
         fontStyle: "normal",
     },
     {
         family: "Georgia",
         format: "truetype",
-        src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/georgiab.ttf`,
+        src: "/fonts/georgiab.ttf",  // Simplified path
         fontWeight: 700,
         fontStyle: "bold",
     },
     {
         family: "Georgia",
         format: "truetype",
-        src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/georgiai.ttf`,
+        src: "/fonts/georgiai.ttf",  // Simplified path
         fontWeight: 400,
         fontStyle: "italic",
     },
