@@ -5,7 +5,7 @@ export const organization: OrganizationData = {
     organizations: [
         {
             name: "Himpunan Mahasiswa Informatika (HMIF) USK",
-            role: "Vice Chairman",
+            role: "KOMINFO - Vice Chairman",
             period: "Nov 2020 - Nov 2021",
             location: "Banda Aceh, Indonesia",
             description: [
@@ -18,7 +18,7 @@ export const organization: OrganizationData = {
         },
         {
             name: "Himpunan Mahasiswa Informatika (HMIF) USK",
-            role: "Staff",
+            role: "KOMINFO - Staff",
             period: "Nov 2019 - Nov 2020",
             location: "Banda Aceh, Indonesia",
             description: [
