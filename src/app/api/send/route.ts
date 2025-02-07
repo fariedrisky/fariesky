@@ -92,7 +92,6 @@ export async function POST(request: Request) {
         });
 
     } catch (error) {
-        console.error("API error:", error);
         return Response.json({
             success: false,
             error: error instanceof Error ? error.message : "Failed to send email"
