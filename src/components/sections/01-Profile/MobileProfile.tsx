@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
 import { MapPin, Phone, Mail, X, ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -13,6 +13,7 @@ interface MobileProfileProps {
 
 export default function MobileProfile({ onContactClick }: MobileProfileProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const pdfButton = useMemo(() => <DownloadCV />, []);
 
   return (
     <Card className="w-full bg-white !p-0">
@@ -101,7 +102,7 @@ export default function MobileProfile({ onContactClick }: MobileProfileProps) {
         <div className="overflow-hidden">
           <CardContent className="!px-4 !pb-4 !pt-0">
             <div className="flex flex-col gap-2">
-              <DownloadCV />
+              {pdfButton}
               <Button
                 className="w-full rounded-xl bg-gray-900 text-sm text-white hover:bg-gray-800"
                 onClick={onContactClick}

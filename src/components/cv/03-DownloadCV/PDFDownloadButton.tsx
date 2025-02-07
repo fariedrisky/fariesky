@@ -1,4 +1,3 @@
-// components/cv/03-DownloadCV/PDFDownloadButton.tsx
 "use client";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/Button";

@@ -1,9 +1,7 @@
-// components/cv/03-DownloadCV/index.tsx
 "use client";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/Button";
 
-// Dynamically import the PDFDownloadButton with no SSR
 const PDFDownloadButton = dynamic(
   () =>
     import("@/components/cv/03-DownloadCV/PDFDownloadButton").then((mod) => ({
