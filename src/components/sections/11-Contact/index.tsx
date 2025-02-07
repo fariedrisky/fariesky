@@ -6,21 +6,45 @@ import { Card, CardContent } from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Textarea from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
+import toast, { Toaster } from "react-hot-toast";
 
 export default function Contact() {
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     message: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(formData);
-  };
+    setIsLoading(true);
 
+    try {
+      const response = await fetch("/api/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setFormData({ name: "", email: "", message: "" });
+        toast.success("Message sent successfully!");
+      } else {
+        toast.error(data.error?.message || "Failed to send message");
+      }
+    } catch (err) {
+      console.error("Error sending message:", err);
+      toast.error("Failed to send message. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <section>
+      <Toaster position="top-center" />
       <Title>{contactData.title}</Title>
 
       <Card className="!p-6">
@@ -39,6 +63,7 @@ export default function Contact() {
                       }))
                     }
                     required
+                    disabled={isLoading}
                   />
                 ) : (
                   <Input
@@ -52,6 +77,7 @@ export default function Contact() {
                       }))
                     }
                     required
+                    disabled={isLoading}
                   />
                 )}
               </div>
@@ -61,8 +87,9 @@ export default function Contact() {
               type="submit"
               size="lg"
               className="w-full bg-black text-white"
+              disabled={isLoading}
             >
-              {contactData.submitText}
+              {isLoading ? "Sending..." : contactData.submitText}
             </Button>
           </form>
         </CardContent>
