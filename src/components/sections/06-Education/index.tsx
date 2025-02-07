@@ -24,7 +24,7 @@ export default function Education() {
                     alt={`${education.school} logo`}
                     width={40}
                     height={50}
-                    className="object-contain"
+                    className="h-[40px] w-[50px] object-contain"
                   />
                 </div>
                 <div>

@@ -2,7 +2,6 @@
 import { Experience as ExperienceType } from "./types";
 import { useState } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 import { experience } from "./data";
 import Title from "@/components/ui/Title";
 import { X, ChevronDown } from "lucide-react";
@@ -40,7 +39,7 @@ export default function Experience() {
           alt={`${experience.company} logo`}
           width={40}
           height={50}
-          className="object-contain"
+          className="h-[40px] w-[50px] object-contain"
         />
       );
     }
@@ -64,9 +63,8 @@ export default function Experience() {
       <div className="space-y-4">
         {experience.experiences.map(
           (experience: ExperienceType, index: number) => (
-            <Card key={index} className="!p-0">
-              <motion.div
-                initial={false}
+            <Card key={index} className="overflow-hidden !p-0">
+              <div
                 className="relative cursor-pointer"
                 onClick={() =>
                   setExpandedIndex(expandedIndex === index ? null : index)
@@ -101,11 +99,15 @@ export default function Experience() {
                           {experience.period}
                         </span>
                         <div className="flex h-6 w-6 items-center justify-center">
-                          {expandedIndex === index ? (
-                            <X size={20} />
-                          ) : (
-                            <ChevronDown size={20} />
-                          )}
+                          <div
+                            className={`transform transition-transform duration-300 ${expandedIndex === index ? "rotate-180" : ""}`}
+                          >
+                            {expandedIndex === index ? (
+                              <X size={20} />
+                            ) : (
+                              <ChevronDown size={20} />
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="mr-10 flex items-center gap-1 text-xs text-gray-500 sm:text-sm">
@@ -115,41 +117,41 @@ export default function Experience() {
                   </div>
                   <div className="absolute right-4 top-4">
                     <div className="flex h-6 w-6 items-center justify-center sm:hidden">
-                      {expandedIndex === index ? (
-                        <X size={20} />
-                      ) : (
-                        <ChevronDown size={20} />
-                      )}
+                      <div
+                        className={`transform transition-transform duration-300 ${expandedIndex === index ? "rotate-180" : ""}`}
+                      >
+                        {expandedIndex === index ? (
+                          <X size={20} />
+                        ) : (
+                          <ChevronDown size={20} />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>
-              </motion.div>
+              </div>
 
-              <AnimatePresence initial={false}>
-                {expandedIndex === index && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{
-                      duration: 0.3,
-                      ease: "easeInOut",
-                    }}
-                  >
-                    <CardContent className="!px-4 !pb-4 !pl-20 !pt-2">
-                      <ul className="list-disc space-y-2 text-sm sm:text-base">
-                        {experience.description.map(
-                          (item: string, idx: number) => (
-                            <li key={idx} className="text-gray-600">
-                              {item}
-                            </li>
-                          ),
-                        )}
-                      </ul>
-                    </CardContent>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <div
+                className={`grid transition-all duration-300 ease-in-out ${
+                  expandedIndex === index
+                    ? "grid-rows-[1fr] opacity-100"
+                    : "grid-rows-[0fr] opacity-0"
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <CardContent className="!px-4 !pb-4 !pl-20 !pt-2">
+                    <ul className="list-disc space-y-2 text-sm sm:text-base">
+                      {experience.description.map(
+                        (item: string, idx: number) => (
+                          <li key={idx} className="text-gray-600">
+                            {item}
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  </CardContent>
+                </div>
+              </div>
             </Card>
           ),
         )}

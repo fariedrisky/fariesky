@@ -7,3 +7,4 @@ export interface ProfileData {
     phone: string;
     email: string;
 }
+
