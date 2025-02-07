@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { contactData } from "./data";
 import Title from "@/components/ui/Title";
 import { Card, CardContent } from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
@@ -36,9 +35,7 @@ export default function Contact() {
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to send");
-      }
+      if (!response.ok) throw new Error(data.error || "Failed to send");
 
       if (data.success) {
         toast.success(data.message);
@@ -55,43 +52,44 @@ export default function Contact() {
 
   return (
     <section>
-      <Title>{contactData.title}</Title>
-
+      <Title>Contact Us</Title>
       <Card className="!p-6">
         <CardContent className="!p-0">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {Object.entries(contactData.fields).map(([key, label]) => (
-              <div key={key}>
-                {key === "message" ? (
-                  <Textarea
-                    label={label}
-                    value={formData[key as keyof typeof formData]}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        [key]: e.target.value,
-                      }))
-                    }
-                    required
-                    disabled={isLoading}
-                  />
-                ) : (
-                  <Input
-                    type={key === "email" ? "email" : "text"}
-                    label={label}
-                    value={formData[key as keyof typeof formData]}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        [key]: e.target.value,
-                      }))
-                    }
-                    required
-                    disabled={isLoading}
-                  />
-                )}
-              </div>
-            ))}
+          <form onSubmit={handleSubmit} className="space-y-6" autoComplete="on">
+            <Input
+              name="name"
+              type="text"
+              label="Name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              required
+              disabled={isLoading}
+            />
+
+            <Input
+              name="email"
+              type="email"
+              label="Email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              required
+              disabled={isLoading}
+            />
+
+            <Textarea
+              name="message"
+              label="Message"
+              value={formData.message}
+              onChange={(e) =>
+                setFormData({ ...formData, message: e.target.value })
+              }
+              required
+              disabled={isLoading}
+            />
 
             <Button
               type="submit"
@@ -105,7 +103,7 @@ export default function Contact() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 </div>
               ) : (
-                contactData.submitText
+                "Send Message"
               )}
             </Button>
           </form>
