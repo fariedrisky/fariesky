@@ -51,6 +51,7 @@ export const experience: ExperienceData = {
                 "Maintained consistent design and layout across platforms and devices.",
                 "Tested and debugged applications to ensure smooth, bug-free performance."
             ],
+            logo: "/assets/images/logo/experience/verdnetwork.png",
         },
         {
             company: "Dinas Pertanian dan Perkebunan Aceh",

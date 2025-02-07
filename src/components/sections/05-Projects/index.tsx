@@ -69,7 +69,7 @@ export default function Projects() {
               <Link
                 href={project.url}
                 target="_blank"
-                className="group inline-flex items-center px-2 py-2 text-gray-600 hover:text-gray-900"
+                className="group inline-flex items-center px-2 py-2 text-sm text-gray-600 hover:text-gray-900 sm:text-base"
               >
                 <span className="mr-2">Click to view</span>
                 <ExternalLink className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />

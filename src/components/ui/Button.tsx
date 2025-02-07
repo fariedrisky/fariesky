@@ -19,7 +19,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 	) => {
 		// Base styles yang selalu diaplikasikan
 		const baseStyles =
-			"inline-flex rounded-2xl items-center justify-center whitespace-nowrap  font-medium transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400 disabled:pointer-events-none disabled:opacity-50";
+			"inline-flex rounded-2xl text-sm sm:text-base items-center justify-center whitespace-nowrap  font-medium transition-all duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400 disabled:pointer-events-none disabled:opacity-50";
 
 		// Variant styles
 		const variantStyles = {
