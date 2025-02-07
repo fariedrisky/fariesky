@@ -37,21 +37,20 @@ export async function POST(request: Request) {
         .header {
             padding: 24px;
             border-radius: 24px 24px 0 0;
-            border: 1px solid #eee;
+            border: 1px solid #e5e7eb;
             background: #fff;
-
         }
         .content {
             background: #fff;
             padding: 24px;
-            border: 1px solid #eee;
+            border: 1px solid #e5e7eb;
             border-radius: 0 0 28px 28px;
         }
         .field {
             margin-bottom: 20px;
             padding: 16px;
             border-radius: 24px;
-            border: 1px solid #eee;
+            border: 1px solid #e5e7eb;
         }
         .label {
             font-weight: 500;
