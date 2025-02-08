@@ -100,9 +100,9 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         <h3 className="mb-2 truncate px-2 text-center text-lg font-semibold">
           {project.title}
         </h3>
-        <p className="mb-4 flex-grow px-2 text-justify text-sm text-gray-600">
-          {project.description}
-        </p>
+        <p className="mb-4 flex-grow px-2 text-justify text-sm text-gray-600 [word-spacing:-2px] [letter-spacing:-0.02em]">
+  {project.description}
+</p>
 
         <Button
           variant="outline"
