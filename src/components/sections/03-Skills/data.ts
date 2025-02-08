@@ -11,6 +11,7 @@ export const skills: SkillsData = {
         "Node.js",
         "TypeScript",
         "React.js",
+        "Next.js",
         "Laravel",
         "WordPress",
         "MySQL",
