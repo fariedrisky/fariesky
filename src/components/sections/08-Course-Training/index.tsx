@@ -7,6 +7,7 @@ import Title from "@/components/ui/Title";
 import { X, ChevronDown, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 
 const bgColors = [
   "bg-blue-500",
@@ -159,15 +160,17 @@ export default function Course() {
                   </ul>
                   {course.certificateUrl && (
                     <div className="mt-4 flex items-center gap-2">
-                      <Link
-                        href={course.certificateUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group inline-flex items-center px-2 py-2 text-sm text-gray-600 hover:text-gray-900 sm:text-base"
-                      >
-                        <span className="mr-2">Certificate Source</span>
-                        <ExternalLink className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                      </Link>
+                      <Button variant="outline" className="w-full !rounded-[14px] hover:!bg-neutral-50 shadow-none sm:w-auto">
+                        <Link
+                          href={course.certificateUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group inline-flex items-center px-2 py-2 text-sm text-gray-600 hover:text-gray-900 sm:text-base"
+                        >
+                          <span className="mr-2">Certificate Source</span>
+                          <ExternalLink className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                        </Link>
+                      </Button>
                     </div>
                   )}
                 </CardContent>

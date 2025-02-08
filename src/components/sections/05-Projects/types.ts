@@ -4,6 +4,9 @@ export interface ProjectData {
     description: string;
     image: string[];
     url: string;
+    techStack?: string[];
+    features?: string[];
+    date?: string;
 }
 
 export interface ProjectsData {

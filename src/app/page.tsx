@@ -15,7 +15,7 @@ import AnimatedSection from "@/components/ui/AnimatedSection";
 
 export default function Home() {
   return (
-    <main className="relative min-h-screen">
+    <main className="relative min-h-screen bg-neutral-50">
       {/* Desktop Layout (lg and above) */}
       <div className="mx-auto hidden max-w-7xl gap-8 p-8 lg:flex">
         {/* Left Side - Fixed Profile */}

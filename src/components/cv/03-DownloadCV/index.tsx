@@ -1,6 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/Button";
+import { Loader2 } from "lucide-react";
 
 const PDFDownloadButton = dynamic(
   () =>
@@ -11,7 +12,7 @@ const PDFDownloadButton = dynamic(
     ssr: false,
     loading: () => (
       <Button variant="outline" className="w-full rounded-xl" disabled>
-        Loading...
+        <Loader2 className="h-4 w-4 animate-spin" />
       </Button>
     ),
   },
