@@ -73,7 +73,7 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
           >
             <button
               onClick={handleClose}
-              className="absolute right-6 top-6 z-10 mb-4 rounded-full p-2 text-gray-500 transition-all duration-300 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              className="absolute right-6 top-6 z-10 rounded-full p-2 text-gray-500 transition-all duration-300 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
             >
               <X className="h-5 w-5" />
               <span className="sr-only">Close modal</span>
@@ -83,7 +83,7 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
               className={cn(
                 "modal-scroll max-h-[calc(85vh-3rem)]",
                 animationComplete ? "overflow-y-auto" : "overflow-hidden",
-                "mt-6 mb-4 pr-2",
+                "pr-2",
               )}
             >
               <motion.div
