@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -70,6 +71,14 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
             onAnimationComplete={handleAnimationComplete}
             className="relative z-[101] mx-auto w-[90vw] max-w-4xl rounded-[30px] border bg-white p-6 shadow-2xl"
           >
+            <button
+              onClick={handleClose}
+              className="absolute right-4 top-4 rounded-full p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
+            >
+              <X className="h-5 w-5" />
+              <span className="sr-only">Close modal</span>
+            </button>
+
             <div
               className={cn(
                 "modal-scroll max-h-[calc(85vh-3rem)]",
