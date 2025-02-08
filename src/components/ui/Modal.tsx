@@ -69,11 +69,11 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
             animate={closing ? "closed" : "open"}
             exit="closed"
             onAnimationComplete={handleAnimationComplete}
-            className="relative z-[101] mx-auto w-[90vw] max-w-4xl rounded-[30px] border bg-white p-6 shadow-2xl"
+            className="relative z-[101] mx-auto w-[90vw] max-w-4xl rounded-[30px] border bg-white px-8 pb-8 pt-12 shadow-2xl"
           >
             <button
               onClick={handleClose}
-              className="absolute right-4 top-4 rounded-full p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              className="absolute right-6 top-6 z-10 mb-4 rounded-full p-2 text-gray-500 transition-all duration-300 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200"
             >
               <X className="h-5 w-5" />
               <span className="sr-only">Close modal</span>
@@ -83,7 +83,7 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
               className={cn(
                 "modal-scroll max-h-[calc(85vh-3rem)]",
                 animationComplete ? "overflow-y-auto" : "overflow-hidden",
-                "pr-2",
+                "mt-6 mb-4 pr-2",
               )}
             >
               <motion.div
