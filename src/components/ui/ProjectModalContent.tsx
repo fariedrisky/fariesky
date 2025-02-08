@@ -61,14 +61,16 @@ export function ProjectModalContent({
 
           {/* Description under image on desktop */}
           <div className="mt-4 hidden lg:block">
-            <p className="text-base text-justify text-gray-600">{project.description}</p>
+            <p className="text-justify text-base text-gray-600">
+              {project.description}
+            </p>
           </div>
         </div>
 
         {/* Right Column - Content */}
         <div className="flex flex-col gap-4 lg:col-span-5">
           {/* Description only visible on mobile */}
-          <p className="text-sm text-gray-600 lg:hidden">
+          <p className="text-justify text-sm text-gray-600 [letter-spacing:-0.02em] [word-spacing:-2px] lg:hidden">
             {project.description}
           </p>
 

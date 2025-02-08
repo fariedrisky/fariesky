@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { ExternalLink } from "lucide-react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Modal from "./Modal";
-import { Button } from "./Button";
 import { ProjectModalContent } from "./ProjectModalContent";
 
 function usePreloadImages(images: string[]) {
@@ -52,14 +49,14 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   }, [project.image]);
 
   useEffect(() => {
-    if (project.image.length <= 1) return;
+    if (project.image.length <= 1 || isLightboxOpen) return;
 
     const interval = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % project.image.length);
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [project.image.length]);
+  }, [project.image.length, isLightboxOpen]);
 
   const lightboxImages = project.image.map((src) => ({
     src,
@@ -100,24 +97,9 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         <h3 className="mb-2 truncate px-2 text-center text-lg font-semibold">
           {project.title}
         </h3>
-        <p className="mb-4 flex-grow px-2 text-justify text-sm text-gray-600 [word-spacing:-2px] [letter-spacing:-0.02em]">
-  {project.description}
-</p>
-
-        <Button
-          variant="outline"
-          className="group !rounded-[15px] p-0 shadow-none hover:!bg-neutral-50"
-        >
-          <Link
-            href={project.url}
-            target="_blank"
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center text-gray-600 hover:text-gray-900"
-          >
-            <span className="mr-2">Click to view</span>
-            <ExternalLink className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-          </Link>
-        </Button>
+        <p className="mb-4 flex-grow px-2 text-justify text-sm text-gray-600 [letter-spacing:-0.02em] [word-spacing:-2px]">
+          {project.description}
+        </p>
 
         <Lightbox
           open={isLightboxOpen}
