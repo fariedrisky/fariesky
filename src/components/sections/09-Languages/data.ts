@@ -5,11 +5,13 @@ export const languages: LanguageData = {
     languages: [
         {
             name: "Indonesian",
-            level: "Native"
+            level: "Native",
+            logo: "/assets/images/logo/languages/indonesian.png"
         },
         {
             name: "English",
-            level: "Intermediate"
+            level: "Intermediate",
+            logo: "/assets/images/logo/languages/english.png"
         }
     ]
 };

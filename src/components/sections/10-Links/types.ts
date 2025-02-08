@@ -1,7 +1,7 @@
 export interface LinkItem {
     title: string;
     url: string;
-    icon: string; // Name of the Lucide icon
+    logo: string
 }
 
 export interface LinksData {

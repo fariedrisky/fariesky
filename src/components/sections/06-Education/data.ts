@@ -5,7 +5,7 @@ export const education: EducationData = {
     educations: [
         {
             school: "Syiah Kuala University",
-            degree: "Bachelor of Informatics",
+            degree: "Bachelor of Informatics (S.Kom)",
             score: "GPA 3.50 / 4.00",
             period: "Aug 2018 - Nov 2022",
             location: "Banda Aceh, Indonesia",

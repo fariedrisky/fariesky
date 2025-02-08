@@ -6,4 +6,5 @@ export interface LanguageData {
 export interface Language {
     name: string;
     level: string;
+    logo?: string;
 }

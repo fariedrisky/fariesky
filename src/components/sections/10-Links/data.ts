@@ -6,17 +6,17 @@ export const links: LinksData = {
         {
             title: "Instagram",
             url: "http://instagram.com/fariedrisky",
-            icon: "Instagram"
+            logo: "/assets/images/logo/links/instagram.png"
         },
         {
             title: "LinkedIn",
             url: "http://linkedin.com/in/fariedrisky",
-            icon: "Linkedin"
+            logo: "/assets/images/logo/links/linkedin.png"
         },
         {
             title: "GitHub",
             url: "http://github.com/fariedrisky",
-            icon: "Github"
-        },
+            logo: "/assets/images/logo/links/github.png"
+        }
     ]
 };

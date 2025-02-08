@@ -31,11 +31,11 @@ export default function EducationSection({
           >
             <View style={styles.educationHeader}>
               <Text style={styles.schoolName}>{edu.school}</Text>
-              <Text style={styles.degreeText}>{edu.degree}</Text>
-              {edu.score && <Text style={styles.scoreText}>{edu.score}</Text>}
               <Text style={styles.periodLocation}>
                 {edu.period} | {edu.location}
               </Text>
+              <Text style={styles.degreeText}>{edu.degree}</Text>
+              {edu.score && <Text style={styles.scoreText}>{edu.score}</Text>}
             </View>
           </View>
         ))}

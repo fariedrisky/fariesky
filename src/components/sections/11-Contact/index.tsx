@@ -94,7 +94,7 @@ export default function Contact() {
             <Button
               type="submit"
               size="lg"
-              className="w-full bg-black text-white"
+              className="w-full bg-gray-900 text-white"
               disabled={isLoading}
             >
               {isLoading ? (

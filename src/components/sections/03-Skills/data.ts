@@ -16,7 +16,6 @@ export const skills: SkillsData = {
         "MySQL",
         "PostgreSQL",
         "MongoDB",
-        "SASS",
         "Bootstrap",
         "Tailwind CSS",
         "Elementor",
