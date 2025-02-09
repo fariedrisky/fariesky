@@ -1,29 +1,18 @@
+// components/ViewCounter.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
 import { Eye, Moon } from "lucide-react";
 import { pusherClient } from "@/lib/pusher";
-import _ from "lodash";
+import type { VisitorData } from "@/types/visitors";
 
 interface ViewCounterProps {
   variant?: "mobile" | "tablet" | "desktop";
 }
 
-interface ViewCounterData {
-  count: number;
-  monthlyCount: number;
-  month: string;
-  year: number;
-  onlineCount: number;
-  idleCount: number;
-}
-
-type ConnectionState = "connected" | "connecting" | "disconnected" | "idle";
-
-export default function ViewCounter({ variant }: ViewCounterProps) {
+export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   const [mounted, setMounted] = useState(false);
-  const [data, setData] = useState<ViewCounterData>({
-    count: 0,
+  const [data, setData] = useState<VisitorData>({
     monthlyCount: 0,
     month: "",
     year: new Date().getFullYear(),
@@ -32,129 +21,47 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
   });
   const [loading, setLoading] = useState(true);
 
-  const getBrowserId = () => {
-    const storedId = localStorage.getItem('browser_id');
-    if (storedId) return storedId;
-
-    const newId = Math.random().toString(36).substring(7);
-    localStorage.setItem('browser_id', newId);
-    return newId;
-  };
+  async function updateStatus(status: "online" | "idle") {
+    try {
+      await fetch("/api/visitors/realtime", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
+  }
 
   useEffect(() => {
-    const tabId = Math.random().toString(36).substring(7);
-    const channel = pusherClient.subscribe("visitors-channel");
-    let heartbeatInterval: NodeJS.Timeout | null;
-
-    const updateVisitorStatus = async (status: ConnectionState) => {
-      const browserId = getBrowserId();
-      try {
-        await fetch("/api/visitors/realtime", {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            status,
-            browserId,
-            action: "status_change"
-          }),
-        });
-        setLoading(false);
-      } catch (error) {
-        console.error("Error updating visitor status:", error);
-      }
-    };
-
-    const startHeartbeat = () => {
-      // Initial status update
-      updateVisitorStatus("connected");
-      
-      // Set longer interval to reduce server load
-      heartbeatInterval = setInterval(() => {
-        const status = document.visibilityState === "visible" ? "connected" : "idle";
-        updateVisitorStatus(status);
-      }, 30000); // Increased to 30 seconds
-    };
-
-    const stopHeartbeat = () => {
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
-      }
-      const browserId = getBrowserId();
-      fetch("/api/visitors/realtime", {
-        method: "DELETE",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ browserId }),
-      });
-    };
-
+    // Setup visibility change handler
     const handleVisibilityChange = () => {
-      // Use RAF to debounce visibility changes
-      requestAnimationFrame(() => {
-        if (document.visibilityState === "visible") {
-          localStorage.setItem('tab_active', tabId);
-          updateVisitorStatus("connected");
-          startHeartbeat();
-        } else {
-          updateVisitorStatus("idle");
-          stopHeartbeat();
-        }
-      });
+      const status = document.visibilityState === "visible" ? "online" : "idle";
+      updateStatus(status);
     };
 
-    const handleUserActivity = _.debounce(() => {
-      if (document.visibilityState === "visible") {
-        updateVisitorStatus("connected");
-      }
-    }, 1000);
-
-    channel.bind("visitor-update", (newData: ViewCounterData) => {
+    // Setup Pusher
+    const channel = pusherClient.subscribe("visitors-channel");
+    channel.bind("visitor-update", (newData: VisitorData) => {
       setData(newData);
       setLoading(false);
     });
 
-    pusherClient.connection.bind("connected", () => {
-      if (document.visibilityState === "visible") {
-        startHeartbeat();
-      }
-    });
-
-    pusherClient.connection.bind("disconnected", () => {
-      stopHeartbeat();
-    });
+    // Initial status update
+    if (document.visibilityState === "visible") {
+      updateStatus("online");
+    }
 
     // Add event listeners
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    document.addEventListener("mousemove", handleUserActivity);
-    document.addEventListener("keypress", handleUserActivity);
-    document.addEventListener("click", handleUserActivity);
-    document.addEventListener("scroll", handleUserActivity);
 
-    window.addEventListener("beforeunload", stopHeartbeat);
-
-    // Initial setup
-    if (document.visibilityState === "visible") {
-      startHeartbeat();
-    }
     setMounted(true);
 
     // Cleanup
     return () => {
-      stopHeartbeat();
       channel.unbind("visitor-update");
       pusherClient.unsubscribe("visitors-channel");
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      document.removeEventListener("mousemove", handleUserActivity);
-      document.removeEventListener("keypress", handleUserActivity);
-      document.removeEventListener("click", handleUserActivity);
-      document.removeEventListener("scroll", handleUserActivity);
-      window.removeEventListener("beforeunload", stopHeartbeat);
     };
   }, []);
 
@@ -203,27 +110,29 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
             )}
           </div>
           <div className="flex items-center gap-1.5 border-l border-neutral-200 pl-2">
-            <div
-              className={`h-1.5 w-1.5 rounded-full animate-pulse bg-green-500`}
-            />
-            <span className={`text-neutral-400 ${
-              variant === "mobile" ? "text-[10px]" : "text-xs"
-            }`}>
+            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
+            <span
+              className={`text-neutral-400 ${
+                variant === "mobile" ? "text-[10px]" : "text-xs"
+              }`}
+            >
               {loading ? (
                 <span className="animate-pulse">...</span>
               ) : (
                 data.onlineCount
               )}
             </span>
-            <div className="border-l border-neutral-200 ml-2"></div>
+            <div className="ml-2 border-l border-neutral-200" />
             <div className="flex items-center gap-1.5 pl-2">
               <Moon
                 size={variant === "mobile" ? 12 : 14}
                 className="text-yellow-400"
               />
-              <span className={`text-neutral-400 ${
-                variant === "mobile" ? "text-[10px]" : "text-xs"
-              }`}>
+              <span
+                className={`text-neutral-400 ${
+                  variant === "mobile" ? "text-[10px]" : "text-xs"
+                }`}
+              >
                 {loading ? (
                   <span className="animate-pulse">...</span>
                 ) : (

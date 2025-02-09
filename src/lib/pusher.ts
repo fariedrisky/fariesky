@@ -1,16 +1,16 @@
-import PusherServer from 'pusher';
+// lib/pusher.ts
+import Pusher from 'pusher';
 import PusherClient from 'pusher-js';
 
-const pusherServer = new PusherServer({
-  appId: '1939238',
-  key: '7881df9de091dec71308',
-  secret: 'cf4a76303882bfa1142e',
-  cluster: 'ap1',
-  useTLS: true
+export const pusherClient = new PusherClient('7881df9de091dec71308', {
+   cluster: 'ap1',
+   forceTLS: true
 });
 
-const pusherClient = new PusherClient('7881df9de091dec71308', {
-  cluster: 'ap1',
+export const pusherServer = new Pusher({
+   appId: '1939238',
+   key: '7881df9de091dec71308',
+   secret: 'cf4a76303882bfa1142e', 
+   cluster: 'ap1',
+   useTLS: true
 });
-
-export { pusherServer, pusherClient };
