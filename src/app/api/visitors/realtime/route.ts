@@ -9,60 +9,58 @@ const redis = new Redis({
 
 export async function POST(request: NextRequest) {
     try {
-        // Generate or get visitor ID
-        const userId = request.cookies.get('visitor_id')?.value ||
-            Math.random().toString(36).substring(7);
-        const onlineKey = `online:${userId}`;
+        const body = await request.json();
+        const { status, browserId } = body;
 
-        // Mark user as online with 30 second expiry
-        await redis.set(onlineKey, new Date().toISOString(), { ex: 30 });
+        const onlineKey = `online:${browserId}`;
+        const idleKey = `idle:${browserId}`;
+        const visitorKey = `visitor:${browserId}`;
 
-        // Get current date info
+        // Handle user status
+        if (status === 'idle') {
+            await redis.del(onlineKey);
+            await redis.set(idleKey, new Date().toISOString(), { ex: 30 });
+        } else {
+            await redis.del(idleKey);
+            await redis.set(onlineKey, new Date().toISOString(), { ex: 30 });
+        }
+
         const now = new Date();
         const monthKey = `visitors:${now.getFullYear()}-${now.getMonth() + 1}`;
 
-        // Increment monthly and total counters if new visitor
-        if (!request.cookies.get('visitor_id')) {
+        // Check if this is a new visitor (browser)
+        const isExistingVisitor = await redis.exists(visitorKey);
+        if (!isExistingVisitor) {
             await Promise.all([
                 redis.incr('visitors:total'),
-                redis.incr(monthKey)
+                redis.incr(monthKey),
+                redis.set(visitorKey, new Date().toISOString(), { ex: 86400 }) // 24 hours
             ]);
         }
 
-        // Get current counts
         const [monthlyCount, totalCount] = await Promise.all([
             redis.get<number>(monthKey) || 0,
             redis.get<number>('visitors:total') || 0,
         ]);
 
-        // Get online users count
-        const onlineUsers = await redis.keys('online:*');
+        // Get active and idle users count by unique browsers
+        const [activeUsers, idleUsers] = await Promise.all([
+            redis.keys('online:*'),
+            redis.keys('idle:*')
+        ]);
 
         const visitorData = {
             count: totalCount,
             monthlyCount,
             month: now.toLocaleString("default", { month: "short" }),
             year: now.getFullYear(),
-            onlineCount: onlineUsers.length
+            onlineCount: activeUsers.length,
+            idleCount: idleUsers.length
         };
 
-        // Trigger Pusher event with updated data
         await pusherServer.trigger('visitors-channel', 'visitor-update', visitorData);
 
-        // Prepare response
-        const response = NextResponse.json({ success: true });
-
-        // Set cookie for new visitors
-        if (!request.cookies.get('visitor_id')) {
-            response.cookies.set('visitor_id', userId, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 60 * 60 * 24 * 365 // 1 year
-            });
-        }
-
-        return response;
+        return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error:', error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -71,19 +69,23 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
     try {
-        const userId = request.cookies.get('visitor_id')?.value;
-        if (userId) {
-            // Remove user from online list
-            await redis.del(`online:${userId}`);
+        const body = await request.json();
+        const { browserId } = body;
 
-            // Get updated counts
+        if (browserId) {
+            await Promise.all([
+                redis.del(`online:${browserId}`),
+                redis.del(`idle:${browserId}`)
+            ]);
+
             const now = new Date();
             const monthKey = `visitors:${now.getFullYear()}-${now.getMonth() + 1}`;
 
-            const [monthlyCount, totalCount, onlineUsers] = await Promise.all([
+            const [monthlyCount, totalCount, activeUsers, idleUsers] = await Promise.all([
                 redis.get<number>(monthKey) || 0,
                 redis.get<number>('visitors:total') || 0,
-                redis.keys('online:*')
+                redis.keys('online:*'),
+                redis.keys('idle:*')
             ]);
 
             const visitorData = {
@@ -91,10 +93,10 @@ export async function DELETE(request: NextRequest) {
                 monthlyCount,
                 month: now.toLocaleString("default", { month: "short" }),
                 year: now.getFullYear(),
-                onlineCount: onlineUsers.length
+                onlineCount: activeUsers.length,
+                idleCount: idleUsers.length
             };
 
-            // Trigger update
             await pusherServer.trigger('visitors-channel', 'visitor-update', visitorData);
         }
         return NextResponse.json({ success: true });
