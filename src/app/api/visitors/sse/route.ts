@@ -6,6 +6,10 @@ const redis = new Redis({
     token: process.env.KV_REST_API_TOKEN || '',
 });
 
+export const runtime = 'edge';
+export const preferredRegion = 'sin1';
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
@@ -42,35 +46,46 @@ export async function GET(request: NextRequest) {
         };
     };
 
-    // Send initial data
-    const initialData = await getVisitorData();
-    const initialDataString = `data: ${JSON.stringify(initialData)}\n\n`;
-    await writer.write(encoder.encode(initialDataString));
+    try {
+        // Send initial data
+        const initialData = await getVisitorData();
+        const initialDataString = `data: ${JSON.stringify(initialData)}\n\n`;
+        await writer.write(encoder.encode(initialDataString));
 
-    // Setup interval to send updates
-    const interval = setInterval(async () => {
-        try {
-            const data = await getVisitorData();
-            const dataString = `data: ${JSON.stringify(data)}\n\n`;
-            await writer.write(encoder.encode(dataString));
-        } catch (error) {
-            console.error('Error sending SSE update:', error);
-        }
-    }, 1000);
+        // Kirim ping setiap 15 detik untuk menjaga koneksi
+        const pingInterval = setInterval(async () => {
+            await writer.write(encoder.encode(": ping\n\n"));
+        }, 15000);
 
-    // Cleanup on client disconnect
-    request.signal.addEventListener('abort', async () => {
-        clearInterval(interval);
-        // Hapus user dari daftar online saat disconnect
-        await redis.del(onlineKey);
-        writer.close();
-    });
+        // Update data setiap 30 detik
+        const updateInterval = setInterval(async () => {
+            try {
+                const data = await getVisitorData();
+                const dataString = `data: ${JSON.stringify(data)}\n\n`;
+                await writer.write(encoder.encode(dataString));
+            } catch (error) {
+                console.error('Error sending SSE update:', error);
+            }
+        }, 30000);
 
-    return new Response(stream.readable, {
-        headers: {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-        },
-    });
+        // Cleanup on client disconnect
+        request.signal.addEventListener('abort', async () => {
+            clearInterval(pingInterval);
+            clearInterval(updateInterval);
+            await redis.del(onlineKey);
+            writer.close();
+        });
+
+        return new Response(stream.readable, {
+            headers: {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache, no-transform',
+                'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no'
+            },
+        });
+    } catch (error) {
+        console.error('SSE Error:', error);
+        return new Response('Error', { status: 500 });
+    }
 }

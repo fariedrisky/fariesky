@@ -27,22 +27,41 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let eventSource: EventSource;
+    let eventSource: EventSource | null = null;
+    let retryCount = 0;
+    const maxRetries = 5;
 
     const setupSSE = () => {
+      if (retryCount >= maxRetries) {
+        console.error("Max retries reached");
+        return;
+      }
+
+      if (eventSource) {
+        eventSource.close();
+      }
+
       eventSource = new EventSource("/api/visitors/sse");
 
       eventSource.onmessage = (event) => {
-        const newData = JSON.parse(event.data);
-        setData(newData);
-        setLoading(false);
+        try {
+          const newData = JSON.parse(event.data);
+          setData(newData);
+          setLoading(false);
+          retryCount = 0; // Reset retry count on successful connection
+        } catch (error) {
+          console.error("Error parsing SSE data:", error);
+        }
       };
 
       eventSource.onerror = (error) => {
         console.error("SSE Error:", error);
-        eventSource.close();
-        // Retry connection after 5 seconds
-        setTimeout(setupSSE, 5000);
+        eventSource?.close();
+        retryCount++;
+
+        // Exponential backoff for retry
+        const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 30000);
+        setTimeout(setupSSE, retryDelay);
       };
     };
 
@@ -50,40 +69,35 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
     setMounted(true);
 
     // Handle tab close atau navigasi away
-    const handleBeforeUnload = async () => {
+    const handleOffline = async () => {
       if (eventSource) {
         eventSource.close();
       }
       try {
-        const response = await fetch("/api/visitors/offline", {
+        await fetch("/api/visitors/offline", {
           method: "POST",
-          // Gunakan keepalive agar request tetap terkirim meski tab sudah ditutup
           keepalive: true,
         });
-        if (!response.ok) {
-          throw new Error("Failed to mark user as offline");
-        }
       } catch (error) {
-        console.error("Error marking user offline:", error);
+        console.error("Error marking offline:", error);
       }
     };
 
-    // Handle ketika user menutup tab atau navigasi away
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    // Handle ketika user minimize browser atau switch tab
+    window.addEventListener("beforeunload", handleOffline);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") {
-        handleBeforeUnload();
+        handleOffline();
+      } else {
+        setupSSE();
       }
     });
 
     return () => {
-      // Cleanup
-      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("beforeunload", handleOffline);
       if (eventSource) {
         eventSource.close();
       }
-      handleBeforeUnload();
+      handleOffline();
     };
   }, []);
 
