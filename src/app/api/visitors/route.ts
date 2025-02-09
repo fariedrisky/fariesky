@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 
 const redis = new Redis({
-    url: process.env.KV_URL || '',
+    // Gunakan KV_REST_API_URL dan KV_REST_API_TOKEN
+    url: process.env.KV_REST_API_URL || '',
     token: process.env.KV_REST_API_TOKEN || '',
 });
 
