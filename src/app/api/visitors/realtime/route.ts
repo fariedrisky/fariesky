@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 import { pusherServer } from "@/lib/pusher";
-import { VisitorData, StatusChangeRequest, VisitorDetails } from "@/types/visitors";
+import { VisitorData, StatusChangeRequest, DeviceInfo } from "@/types/visitors";
 import { getDeviceInfo } from "@/utils/deviceDetection";
 
 const redis = new Redis({
@@ -12,95 +12,107 @@ const redis = new Redis({
 
 const CACHE_TTL = 5; // 5 seconds
 
-// Helper function to check if IP is localhost
-function isLocalhost(ip: string): boolean {
-    return ip === '127.0.0.1' || ip === '::1' || ip === 'localhost';
+interface VisitorDetails {
+    id: string;
+    userAgent: string;
+    deviceInfo: DeviceInfo;
+    lastSeen: string;
+    status: 'online' | 'idle' | 'offline';
 }
 
-// Helper function to get visitor details by IP with fixed types
-async function getVisitorDetailsByIPs(ips: string[]): Promise<VisitorDetails[]> {
-    try {
-        const details = await Promise.all(
-            ips.map(async (ip) => {
-                const userAgent = (await redis.get(`visitor:${ip}:useragent`)) as string | null;
-                const deviceInfo = userAgent ? getDeviceInfo(userAgent) : null;
-                const lastSeen = (await redis.get(`visitor:${ip}:lastSeen`)) as string | null;
+// Helper to get current month key
+function getCurrentMonthKey(): string {
+    const now = new Date();
+    return `visitors:${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 
-                return {
-                    ip,
-                    deviceInfo,
-                    lastSeen: lastSeen || 'Unknown',
-                    userAgent: userAgent || 'Unknown'
-                } satisfies VisitorDetails;
-            })
-        );
-        return details;
+// Check if it's a new month and reset if needed
+async function checkAndResetMonthly(): Promise<void> {
+    try {
+        const now = new Date();
+        const isFirstDayOfMonth = now.getDate() === 1;
+        const lastResetKey = 'last_monthly_reset';
+
+        if (!isFirstDayOfMonth) return;
+
+        const lastReset = await redis.get(lastResetKey);
+        if (!lastReset) {
+            // First time running, just set the reset date
+            await redis.set(lastResetKey, now.toISOString());
+            return;
+        }
+
+        const lastResetDate = new Date(lastReset as string);
+        const isSameMonth = lastResetDate.getMonth() === now.getMonth() &&
+            lastResetDate.getFullYear() === now.getFullYear();
+
+        if (!isSameMonth) {
+            // It's a new month, perform reset
+            const monthKey = getCurrentMonthKey();
+
+            // Delete all visitor details
+            const allKeys = await redis.keys(`${monthKey}:*`);
+            for (const key of allKeys) {
+                await redis.del(key);
+            }
+
+            // Update reset timestamp
+            await redis.set(lastResetKey, now.toISOString());
+
+            console.log('Monthly visitor reset performed:', {
+                month: monthKey,
+                resetTime: now.toISOString()
+            });
+        }
     } catch (error) {
-        console.error('Error getting visitor details:', error);
-        return [];
+        console.error('Error in monthly reset:', error);
+    }
+}
+
+async function getVisitorDetails(id: string): Promise<VisitorDetails | null> {
+    try {
+        const details = await redis.get(`visitor:${id}:details`);
+        if (!details) return null;
+
+        if (typeof details === 'string') {
+            return JSON.parse(details);
+        } else if (typeof details === 'object') {
+            return details as VisitorDetails;
+        }
+        return null;
+    } catch (error) {
+        console.error(`Error getting visitor details for ${id}:`, error);
+        return null;
     }
 }
 
 async function getVisitorData(): Promise<VisitorData> {
     const now = new Date();
-    const monthKey = `visitors:${now.getFullYear()}-${now.getMonth() + 1}`;
+    const monthKey = getCurrentMonthKey();
     const cacheKey = 'visitor_data_cache';
 
     try {
-        // Get real-time data
-        const [allVisitorIPs, onlineIPs, idleIPs] = await Promise.all([
-            redis.smembers(`${monthKey}:visitors`),
-            redis.smembers('online_visitors'),
-            redis.smembers('idle_visitors')
-        ]);
+        // Get all visitor IDs for the current month
+        const monthlyVisitors = await redis.smembers(`${monthKey}:visitors`);
 
-        // Filter out localhost IPs
-        const visitorIPs = allVisitorIPs.filter(ip => !isLocalhost(ip));
-        const filteredOnlineIPs = onlineIPs.filter(ip => !isLocalhost(ip));
-        const filteredIdleIPs = idleIPs.filter(ip => !isLocalhost(ip));
+        // Get all visitor details
+        const visitorDetailsPromises = monthlyVisitors.map(id => getVisitorDetails(id));
+        const visitorDetails = await Promise.all(visitorDetailsPromises);
 
-        // Get detailed information for online and idle visitors
-        const [onlineDetails, idleDetails] = await Promise.all([
-            getVisitorDetailsByIPs(filteredOnlineIPs),
-            getVisitorDetailsByIPs(filteredIdleIPs)
-        ]);
-
-        // Log detailed visitor information
-        console.log('\nDetailed Visitor Status:');
-        console.log('\nOnline Visitors:', {
-            count: filteredOnlineIPs.length,
-            visitors: onlineDetails.map(detail => ({
-                ip: detail.ip,
-                device: detail.deviceInfo?.deviceName || 'Unknown Device',
-                browser: detail.deviceInfo?.browser || 'Unknown Browser',
-                os: detail.deviceInfo?.os || 'Unknown OS',
-                lastSeen: detail.lastSeen
-            }))
-        });
-
-        console.log('\nIdle Visitors:', {
-            count: filteredIdleIPs.length,
-            visitors: idleDetails.map(detail => ({
-                ip: detail.ip,
-                device: detail.deviceInfo?.deviceName || 'Unknown Device',
-                browser: detail.deviceInfo?.browser || 'Unknown Browser',
-                os: detail.deviceInfo?.os || 'Unknown OS',
-                lastSeen: detail.lastSeen
-            }))
-        });
+        // Filter out null values and count statuses
+        const validVisitors = visitorDetails.filter((v): v is VisitorDetails => v !== null);
+        const onlineCount = validVisitors.filter(v => v.status === 'online').length;
+        const idleCount = validVisitors.filter(v => v.status === 'idle').length;
 
         const data: VisitorData = {
-            monthlyCount: visitorIPs.length,
+            monthlyCount: monthlyVisitors.length,
             month: now.toLocaleString("default", { month: "short" }),
             year: now.getFullYear(),
-            onlineCount: filteredOnlineIPs.length,
-            idleCount: filteredIdleIPs.length
+            onlineCount,
+            idleCount
         };
 
-        // Cache the stringified data
-        const stringifiedData = JSON.stringify(data);
-        await redis.set(cacheKey, stringifiedData, { ex: CACHE_TTL });
-
+        await redis.set(cacheKey, JSON.stringify(data), { ex: CACHE_TTL });
         return data;
     } catch (error) {
         console.error('Error in getVisitorData:', error);
@@ -114,42 +126,45 @@ async function getVisitorData(): Promise<VisitorData> {
     }
 }
 
-async function updateVisitorStatus(ip: string, userAgent: string, status: 'online' | 'idle'): Promise<void> {
+async function updateVisitorStatus(
+    visitorId: string,
+    userAgent: string,
+    status: 'online' | 'idle' | 'offline'
+): Promise<void> {
     try {
-        // Skip if localhost in production
-        if (process.env.NODE_ENV === 'production' && isLocalhost(ip)) {
-            console.log('Skipping localhost in production:', ip);
-            return;
+        const monthKey = getCurrentMonthKey();
+
+        // Get device info
+        const deviceInfo: DeviceInfo = getDeviceInfo(userAgent);
+
+        // Create visitor details
+        const visitorDetails: VisitorDetails = {
+            id: visitorId,
+            userAgent,
+            deviceInfo,
+            lastSeen: new Date().toISOString(),
+            status
+        };
+
+        const stringifiedDetails = JSON.stringify(visitorDetails);
+        await redis.set(`visitor:${visitorId}:details`, stringifiedDetails);
+        await redis.sadd(`${monthKey}:visitors`, visitorId);
+
+        if (status === 'offline') {
+            setTimeout(async () => {
+                const currentDetails = await getVisitorDetails(visitorId);
+                if (currentDetails?.status === 'offline') {
+                    await redis.del(`visitor:${visitorId}:details`);
+                }
+            }, 5000);
         }
 
-        const now = new Date();
-        const monthKey = `visitors:${now.getFullYear()}-${now.getMonth() + 1}`;
-
-        console.log(`\nUpdating status for visitor:`, {
-            ip,
+        console.log('Updated visitor status:', {
+            visitorId,
             status,
-            timestamp: now.toISOString()
+            monthKey,
+            details: visitorDetails
         });
-
-        // Store user agent and last seen time
-        await Promise.all([
-            redis.set(`visitor:${ip}:useragent`, userAgent),
-            redis.set(`visitor:${ip}:lastSeen`, now.toISOString())
-        ]);
-
-        // Remove IP from both sets first
-        await redis.srem('online_visitors', ip);
-        await redis.srem('idle_visitors', ip);
-
-        // Add to appropriate set based on status
-        if (status === 'online') {
-            await redis.sadd('online_visitors', ip);
-        } else {
-            await redis.sadd('idle_visitors', ip);
-        }
-
-        // Add to monthly visitors
-        await redis.sadd(`${monthKey}:visitors`, ip);
 
     } catch (error) {
         console.error('Error in updateVisitorStatus:', error);
@@ -159,44 +174,24 @@ async function updateVisitorStatus(ip: string, userAgent: string, status: 'onlin
 
 export async function POST(request: NextRequest) {
     try {
-        // Get the real IP address using headers
-        const forwardedFor = request.headers.get("x-forwarded-for");
-        const realIP = request.headers.get("x-real-ip");
+        // Check for monthly reset on each request
+        await checkAndResetMonthly();
+
+        const visitorId = request.headers.get("X-Visitor-ID");
         const userAgent = request.headers.get("user-agent") || "Unknown Device";
 
-        // Get IP address and handle localhost cases
-        const ip = forwardedFor
-            ? forwardedFor.split(',')[0]
-            : realIP || '127.0.0.1';
-
-        // Get device information
-        const deviceInfo = getDeviceInfo(userAgent);
-
-        // Log new visitor information
-        console.log('\nNew Visitor Details:', {
-            ip: {
-                forwardedFor: forwardedFor || 'none',
-                realIP: realIP || 'none',
-                finalIP: ip,
-                isLocalhost: isLocalhost(ip)
-            },
-            device: {
-                ...deviceInfo,
-                userAgent
-            },
-            timestamp: new Date().toISOString()
-        });
+        if (!visitorId) {
+            return NextResponse.json(
+                { error: "Visitor ID is required" },
+                { status: 400 }
+            );
+        }
 
         const body = await request.json();
         const { status } = body as StatusChangeRequest;
 
-        // Update visitor status with user agent
-        await updateVisitorStatus(ip, userAgent, status);
-
-        // Get updated visitor data
+        await updateVisitorStatus(visitorId, userAgent, status);
         const visitorData = await getVisitorData();
-
-        // Broadcast update via Pusher
         await pusherServer.trigger('visitors-channel', 'visitor-update', visitorData);
 
         return NextResponse.json({

@@ -5,13 +5,17 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Eye, Moon } from "lucide-react";
 import { pusherClient } from "@/lib/pusher";
 import type { VisitorData, PusherError } from "@/types/visitors";
+import { v4 as uuidv4 } from 'uuid';
 
 interface ViewCounterProps {
   variant?: "mobile" | "tablet" | "desktop";
 }
 
+const VISITOR_ID_KEY = 'visitor_uuid';
+
 export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   const [mounted, setMounted] = useState(false);
+  const [visitorId, setVisitorId] = useState<string>('');
   const [data, setData] = useState<VisitorData>({
     monthlyCount: 0,
     month: "",
@@ -22,13 +26,28 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Initialize or get visitor UUID
+  useEffect(() => {
+    let id = localStorage.getItem(VISITOR_ID_KEY);
+    if (!id) {
+      id = uuidv4();
+      localStorage.setItem(VISITOR_ID_KEY, id);
+    }
+    setVisitorId(id);
+  }, []);
+
   // Memoized update status function
   const updateStatus = useCallback(async (status: "online" | "idle") => {
+    if (!visitorId) return;
+
     try {
       setError(null);
       const response = await fetch("/api/visitors/realtime", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Visitor-ID": visitorId
+        },
         body: JSON.stringify({ status }),
       });
 
@@ -44,10 +63,26 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
     } catch (error) {
       console.error("Error updating status:", error);
       setError(
-        error instanceof Error ? error.message : "Unknown error occurred",
+        error instanceof Error ? error.message : "Unknown error occurred"
       );
     }
-  }, []);
+  }, [visitorId]);
+
+  // Handle tab/window close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (visitorId) {
+        // Use sendBeacon for more reliable delivery during page unload
+        const data = JSON.stringify({ status: 'offline', visitorId });
+        navigator.sendBeacon('/api/visitors/realtime', data);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [visitorId]);
 
   // Handle visibility change
   const handleVisibilityChange = useCallback(() => {
@@ -57,6 +92,8 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
 
   // Setup effect
   useEffect(() => {
+    if (!visitorId) return;
+
     let mounted = true;
     let retryCount = 0;
     const maxRetries = 3;
@@ -73,12 +110,11 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
           }
         });
 
-        // Handle Pusher connection errors
         channel.bind("pusher:subscription_error", (error: PusherError) => {
           console.error("Pusher subscription error:", error);
           if (retryCount < maxRetries) {
             retryCount++;
-            setTimeout(setupPusher, 2000 * retryCount); // Exponential backoff
+            setTimeout(setupPusher, 2000 * retryCount);
           }
         });
 
@@ -89,7 +125,6 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       }
     };
 
-    // Initial setup
     const channel = setupPusher();
 
     // Initial status update
@@ -97,14 +132,12 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       updateStatus("online");
     }
 
-    // Add event listeners
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("focus", () => updateStatus("online"));
     window.addEventListener("blur", () => updateStatus("idle"));
 
     setMounted(true);
 
-    // Cleanup
     return () => {
       mounted = false;
       if (channel) {
@@ -115,9 +148,8 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       window.removeEventListener("focus", () => updateStatus("online"));
       window.removeEventListener("blur", () => updateStatus("idle"));
     };
-  }, [handleVisibilityChange, updateStatus]);
+  }, [handleVisibilityChange, updateStatus, visitorId]);
 
-  // Don't render anything until mounted
   if (!mounted) return null;
 
   return (

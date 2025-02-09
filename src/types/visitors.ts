@@ -1,5 +1,4 @@
 // types/visitors.ts
-
 export interface VisitorData {
     monthlyCount: number;
     month: string;
@@ -9,43 +8,29 @@ export interface VisitorData {
 }
 
 export interface StatusChangeRequest {
-    status: 'online' | 'idle';
-}
-
-export interface VisitorDetails {
-    ip: string;
-    deviceInfo: {
-        deviceType: string;
-        deviceName: string;
-        deviceBrand: string;
-        deviceModel: string;
-        browser: string;
-        os: string;
-    } | null;
-    lastSeen: string;
-    userAgent: string;
+    status: 'online' | 'idle' | 'offline';
 }
 
 export interface PusherError {
-    error: string;
-    code?: number;
-    data?: Record<string, unknown>;
+    type: string;
+    data: {
+        code: number;
+        message: string;
+    };
 }
 
-export interface VisitorInfo {
-    ip: {
-        forwardedFor: string;
-        realIP: string;
-        finalIP: string;
-        isLocalhost: boolean;
-    };
-    device: {
-        deviceType: string;
-        deviceName: string;
-        deviceBrand: string;
-        deviceModel: string;
-        browser: string;
-        os: string;
-        userAgent: string;
-    };
+export interface DeviceInfo {
+    browser: string;
+    browserVersion: string;
+    os: string;
+    deviceType: string;
+    deviceName: string;
+}
+
+export interface VisitorDetails {
+    id: string;
+    userAgent: string;
+    deviceInfo: DeviceInfo;
+    lastSeen: string;
+    status: 'online' | 'idle' | 'offline';
 }
