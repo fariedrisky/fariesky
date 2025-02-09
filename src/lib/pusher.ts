@@ -1,29 +1,16 @@
 import PusherServer from 'pusher';
 import PusherClient from 'pusher-js';
 
-// Validasi environment variables
-const {
-  PUSHER_APP_ID,
-  NEXT_PUBLIC_PUSHER_KEY,
-  PUSHER_SECRET,
-  NEXT_PUBLIC_PUSHER_CLUSTER
-} = process.env;
-
-if (!PUSHER_APP_ID || !NEXT_PUBLIC_PUSHER_KEY || !PUSHER_SECRET || !NEXT_PUBLIC_PUSHER_CLUSTER) {
-  throw new Error('Missing Pusher environment variables');
-}
-
-export const pusherServer = new PusherServer({
-  appId: PUSHER_APP_ID,
-  key: NEXT_PUBLIC_PUSHER_KEY,
-  secret: PUSHER_SECRET,
-  cluster: NEXT_PUBLIC_PUSHER_CLUSTER,
+const pusherServer = new PusherServer({
+  appId: '1939238',
+  key: '7881df9de091dec71308',
+  secret: 'cf4a76303882bfa1142e',
+  cluster: 'ap1',
   useTLS: true
 });
 
-export const pusherClient = new PusherClient(
-  NEXT_PUBLIC_PUSHER_KEY,
-  {
-    cluster: NEXT_PUBLIC_PUSHER_CLUSTER,
-  }
-);
+const pusherClient = new PusherClient('7881df9de091dec71308', {
+  cluster: 'ap1',
+});
+
+export { pusherServer, pusherClient };
