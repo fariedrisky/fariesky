@@ -5,17 +5,21 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Eye, Moon } from "lucide-react";
 import { pusherClient } from "@/lib/pusher";
 import type { VisitorData, PusherError } from "@/types/visitors";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
 interface ViewCounterProps {
   variant?: "mobile" | "tablet" | "desktop";
 }
 
-const VISITOR_ID_KEY = 'visitor_uuid';
+const VISITOR_ID_KEY = "visitor_uuid";
+const LAST_STATUS_KEY = "last_visitor_status";
 
 export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   const [mounted, setMounted] = useState(false);
-  const [visitorId, setVisitorId] = useState<string>('');
+  const [visitorId, setVisitorId] = useState<string>("");
+  const [currentStatus, setCurrentStatus] = useState<
+    "online" | "idle" | "offline"
+  >("offline");
   const [data, setData] = useState<VisitorData>({
     monthlyCount: 0,
     month: "",
@@ -26,7 +30,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize or get visitor UUID
+  // Initialize or get visitor UUID and last status
   useEffect(() => {
     let id = localStorage.getItem(VISITOR_ID_KEY);
     if (!id) {
@@ -34,61 +38,88 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       localStorage.setItem(VISITOR_ID_KEY, id);
     }
     setVisitorId(id);
+
+    const lastStatus = localStorage.getItem(LAST_STATUS_KEY) as
+      | "online"
+      | "idle"
+      | null;
+    if (lastStatus) {
+      setCurrentStatus(lastStatus);
+    }
   }, []);
 
   // Memoized update status function
-  const updateStatus = useCallback(async (status: "online" | "idle") => {
-    if (!visitorId) return;
+  const updateStatus = useCallback(
+    async (status: "online" | "idle" | "offline") => {
+      if (!visitorId) return;
 
-    try {
-      setError(null);
-      const response = await fetch("/api/visitors/realtime", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "X-Visitor-ID": visitorId
-        },
-        body: JSON.stringify({ status }),
-      });
+      try {
+        setError(null);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update status");
+        // Only update if status actually changed
+        if (status === currentStatus) return;
+
+        setCurrentStatus(status);
+        localStorage.setItem(LAST_STATUS_KEY, status);
+
+        const response = await fetch("/api/visitors/realtime", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Visitor-ID": visitorId,
+          },
+          body: JSON.stringify({ status }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to update status");
+        }
+
+        const result = await response.json();
+        if (result.data) {
+          setData(result.data);
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        setError(
+          error instanceof Error ? error.message : "Unknown error occurred",
+        );
       }
-
-      const result = await response.json();
-      if (result.data) {
-        setData(result.data);
-      }
-    } catch (error) {
-      console.error("Error updating status:", error);
-      setError(
-        error instanceof Error ? error.message : "Unknown error occurred"
-      );
-    }
-  }, [visitorId]);
+    },
+    [visitorId, currentStatus],
+  );
 
   // Handle tab/window close
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (visitorId) {
-        // Use sendBeacon for more reliable delivery during page unload
-        const data = JSON.stringify({ status: 'offline', visitorId });
-        navigator.sendBeacon('/api/visitors/realtime', data);
+        localStorage.removeItem(LAST_STATUS_KEY);
+        const data = JSON.stringify({ status: "offline" });
+        navigator.sendBeacon(
+          `/api/visitors/realtime?visitorId=${visitorId}`,
+          data,
+        );
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [visitorId]);
 
   // Handle visibility change
   const handleVisibilityChange = useCallback(() => {
-    const status = document.visibilityState === "visible" ? "online" : "idle";
-    updateStatus(status);
-  }, [updateStatus]);
+    if (document.visibilityState === "visible") {
+      updateStatus("online");
+    } else {
+      // Only go idle if we were previously online
+      if (currentStatus === "online") {
+        updateStatus("idle");
+      }
+    }
+  }, [updateStatus, currentStatus]);
 
   // Setup effect
   useEffect(() => {
@@ -98,7 +129,6 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
     let retryCount = 0;
     const maxRetries = 3;
 
-    // Setup Pusher connection
     const setupPusher = () => {
       try {
         const channel = pusherClient.subscribe("visitors-channel");
@@ -127,14 +157,14 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
 
     const channel = setupPusher();
 
-    // Initial status update
+    // Initial status update based on visibility
     if (document.visibilityState === "visible") {
       updateStatus("online");
+    } else {
+      updateStatus("idle");
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", () => updateStatus("online"));
-    window.addEventListener("blur", () => updateStatus("idle"));
 
     setMounted(true);
 
@@ -145,8 +175,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
         pusherClient.unsubscribe("visitors-channel");
       }
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", () => updateStatus("online"));
-      window.removeEventListener("blur", () => updateStatus("idle"));
+      updateStatus("offline");
     };
   }, [handleVisibilityChange, updateStatus, visitorId]);
 

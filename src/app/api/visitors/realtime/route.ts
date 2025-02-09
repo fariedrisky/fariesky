@@ -10,7 +10,6 @@ const redis = new Redis({
     token: process.env.KV_REST_API_TOKEN || '',
 });
 
-const CACHE_TTL = 5; // 5 seconds
 
 interface VisitorDetails {
     id: string;
@@ -24,49 +23,6 @@ interface VisitorDetails {
 function getCurrentMonthKey(): string {
     const now = new Date();
     return `visitors:${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
-// Check if it's a new month and reset if needed
-async function checkAndResetMonthly(): Promise<void> {
-    try {
-        const now = new Date();
-        const isFirstDayOfMonth = now.getDate() === 1;
-        const lastResetKey = 'last_monthly_reset';
-
-        if (!isFirstDayOfMonth) return;
-
-        const lastReset = await redis.get(lastResetKey);
-        if (!lastReset) {
-            // First time running, just set the reset date
-            await redis.set(lastResetKey, now.toISOString());
-            return;
-        }
-
-        const lastResetDate = new Date(lastReset as string);
-        const isSameMonth = lastResetDate.getMonth() === now.getMonth() &&
-            lastResetDate.getFullYear() === now.getFullYear();
-
-        if (!isSameMonth) {
-            // It's a new month, perform reset
-            const monthKey = getCurrentMonthKey();
-
-            // Delete all visitor details
-            const allKeys = await redis.keys(`${monthKey}:*`);
-            for (const key of allKeys) {
-                await redis.del(key);
-            }
-
-            // Update reset timestamp
-            await redis.set(lastResetKey, now.toISOString());
-
-            console.log('Monthly visitor reset performed:', {
-                month: monthKey,
-                resetTime: now.toISOString()
-            });
-        }
-    } catch (error) {
-        console.error('Error in monthly reset:', error);
-    }
 }
 
 async function getVisitorDetails(id: string): Promise<VisitorDetails | null> {
@@ -89,7 +45,6 @@ async function getVisitorDetails(id: string): Promise<VisitorDetails | null> {
 async function getVisitorData(): Promise<VisitorData> {
     const now = new Date();
     const monthKey = getCurrentMonthKey();
-    const cacheKey = 'visitor_data_cache';
 
     try {
         // Get all visitor IDs for the current month
@@ -99,21 +54,22 @@ async function getVisitorData(): Promise<VisitorData> {
         const visitorDetailsPromises = monthlyVisitors.map(id => getVisitorDetails(id));
         const visitorDetails = await Promise.all(visitorDetailsPromises);
 
-        // Filter out null values and count statuses
-        const validVisitors = visitorDetails.filter((v): v is VisitorDetails => v !== null);
+        // Filter out null values and inactive visitors
+        const validVisitors = visitorDetails.filter((v): v is VisitorDetails =>
+            v !== null && v.status !== 'offline'
+        );
+
+        // Count only active visitors
         const onlineCount = validVisitors.filter(v => v.status === 'online').length;
         const idleCount = validVisitors.filter(v => v.status === 'idle').length;
 
-        const data: VisitorData = {
+        return {
             monthlyCount: monthlyVisitors.length,
             month: now.toLocaleString("default", { month: "short" }),
             year: now.getFullYear(),
             onlineCount,
             idleCount
         };
-
-        await redis.set(cacheKey, JSON.stringify(data), { ex: CACHE_TTL });
-        return data;
     } catch (error) {
         console.error('Error in getVisitorData:', error);
         return {
@@ -134,6 +90,14 @@ async function updateVisitorStatus(
     try {
         const monthKey = getCurrentMonthKey();
 
+        // Get current visitor details
+        const currentDetails = await getVisitorDetails(visitorId);
+
+        // If visitor is already in the desired state, do nothing
+        if (currentDetails?.status === status) {
+            return;
+        }
+
         // Get device info
         const deviceInfo: DeviceInfo = getDeviceInfo(userAgent);
 
@@ -146,25 +110,16 @@ async function updateVisitorStatus(
             status
         };
 
-        const stringifiedDetails = JSON.stringify(visitorDetails);
-        await redis.set(`visitor:${visitorId}:details`, stringifiedDetails);
-        await redis.sadd(`${monthKey}:visitors`, visitorId);
-
         if (status === 'offline') {
-            setTimeout(async () => {
-                const currentDetails = await getVisitorDetails(visitorId);
-                if (currentDetails?.status === 'offline') {
-                    await redis.del(`visitor:${visitorId}:details`);
-                }
-            }, 5000);
+            // For offline status, remove the visitor details after delay
+            await redis.del(`visitor:${visitorId}:details`);
+            console.log('Visitor marked as offline:', visitorId);
+        } else {
+            // For online/idle status, update the details
+            const stringifiedDetails = JSON.stringify(visitorDetails);
+            await redis.set(`visitor:${visitorId}:details`, stringifiedDetails);
+            await redis.sadd(`${monthKey}:visitors`, visitorId);
         }
-
-        console.log('Updated visitor status:', {
-            visitorId,
-            status,
-            monthKey,
-            details: visitorDetails
-        });
 
     } catch (error) {
         console.error('Error in updateVisitorStatus:', error);
@@ -174,9 +129,6 @@ async function updateVisitorStatus(
 
 export async function POST(request: NextRequest) {
     try {
-        // Check for monthly reset on each request
-        await checkAndResetMonthly();
-
         const visitorId = request.headers.get("X-Visitor-ID");
         const userAgent = request.headers.get("user-agent") || "Unknown Device";
 
