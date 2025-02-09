@@ -30,16 +30,17 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
     idleCount: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionState>("connecting");
+  const [connectionStatus, setConnectionStatus] =
+    useState<ConnectionState>("connecting");
   const [idleTimer, setIdleTimer] = useState<NodeJS.Timeout | null>(null);
   const IDLE_TIMEOUT = 60000; // 1 minute of inactivity
 
   const getBrowserId = () => {
-    const storedId = localStorage.getItem('browser_id');
+    const storedId = localStorage.getItem("browser_id");
     if (storedId) return storedId;
 
     const newId = Math.random().toString(36).substring(7);
-    localStorage.setItem('browser_id', newId);
+    localStorage.setItem("browser_id", newId);
     return newId;
   };
 
@@ -60,7 +61,10 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
     setIdleTimer(timer);
   };
 
-  const updateVisitorStatus = async (method: "POST" | "DELETE") => {
+  const updateVisitorStatus = async (
+    method: "POST" | "DELETE",
+    status?: ConnectionState,
+  ) => {
     try {
       const browserId = getBrowserId();
       const response = await fetch("/api/visitors/realtime", {
@@ -70,11 +74,11 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          status: connectionStatus,
-          browserId
+          status: status || connectionStatus,
+          browserId,
         }),
       });
-      
+
       if (!response.ok) throw new Error("Failed to update visitor status");
 
       if (method === "POST") {
@@ -89,8 +93,8 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
   useEffect(() => {
     // Check if another tab of this browser is already connected
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'tab_active' && e.newValue) {
-        const currentTab = sessionStorage.getItem('tab_id');
+      if (e.key === "tab_active" && e.newValue) {
+        const currentTab = sessionStorage.getItem("tab_id");
         if (currentTab !== e.newValue) {
           // Another tab is active, don't count this one
           setConnectionStatus("disconnected");
@@ -101,20 +105,24 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
 
     // Generate unique tab ID
     const tabId = Math.random().toString(36).substring(7);
-    sessionStorage.setItem('tab_id', tabId);
+    sessionStorage.setItem("tab_id", tabId);
 
     // Set this tab as active
     if (document.visibilityState === "visible") {
-      localStorage.setItem('tab_active', tabId);
+      localStorage.setItem("tab_active", tabId);
     }
 
     const channel = pusherClient.subscribe("visitors-channel");
     let heartbeatInterval: NodeJS.Timeout;
 
     const startHeartbeat = () => {
-      updateVisitorStatus("POST");
+      const currentStatus =
+        document.visibilityState === "visible" ? "connected" : "idle";
+      updateVisitorStatus("POST", currentStatus);
       heartbeatInterval = setInterval(() => {
-        updateVisitorStatus("POST");
+        const status =
+          document.visibilityState === "visible" ? "connected" : "idle";
+        updateVisitorStatus("POST", status);
       }, 20000);
     };
 
@@ -146,14 +154,18 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
       stopHeartbeat();
     });
 
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = async () => {
       if (document.visibilityState === "visible") {
-        localStorage.setItem('tab_active', tabId);
+        localStorage.setItem("tab_active", tabId);
         setConnectionStatus("connected");
+        // Explicitly send connected status
+        await updateVisitorStatus("POST", "connected");
         startHeartbeat();
         resetIdleTimer();
       } else {
         setConnectionStatus("idle");
+        // Explicitly send idle status
+        await updateVisitorStatus("POST", "idle");
         stopHeartbeat();
         if (idleTimer) clearTimeout(idleTimer);
       }
@@ -165,7 +177,7 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
     document.addEventListener("visibilitychange", handleVisibilityChange);
     document.addEventListener("mousemove", handleUserActivity);
     document.addEventListener("keypress", handleUserActivity);
@@ -173,7 +185,7 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
     document.addEventListener("scroll", handleUserActivity);
 
     window.addEventListener("beforeunload", () => {
-      localStorage.removeItem('tab_active');
+      localStorage.removeItem("tab_active");
       stopHeartbeat();
     });
 
@@ -181,16 +193,16 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
       startHeartbeat();
       resetIdleTimer();
     }
-    
+
     setMounted(true);
 
     return () => {
       stopHeartbeat();
       if (idleTimer) clearTimeout(idleTimer);
-      localStorage.removeItem('tab_active');
+      localStorage.removeItem("tab_active");
       channel.unbind("visitor-update");
       pusherClient.unsubscribe("visitors-channel");
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       document.removeEventListener("mousemove", handleUserActivity);
       document.removeEventListener("keypress", handleUserActivity);
@@ -256,24 +268,28 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
                     : "bg-red-500"
               }`}
             />
-            <span className={`text-neutral-400 ${
-              variant === "mobile" ? "text-[10px]" : "text-xs"
-            }`}>
+            <span
+              className={`text-neutral-400 ${
+                variant === "mobile" ? "text-[10px]" : "text-xs"
+              }`}
+            >
               {loading ? (
                 <span className="animate-pulse">...</span>
               ) : (
                 data.onlineCount
               )}
             </span>
-            <div className="border-l border-neutral-200 ml-2"></div>
+            <div className="ml-2 border-l border-neutral-200"></div>
             <div className="flex items-center gap-1.5 pl-2">
               <Moon
                 size={variant === "mobile" ? 12 : 14}
                 className="text-yellow-400"
               />
-              <span className={`text-neutral-400 ${
-                variant === "mobile" ? "text-[10px]" : "text-xs"
-              }`}>
+              <span
+                className={`text-neutral-400 ${
+                  variant === "mobile" ? "text-[10px]" : "text-xs"
+                }`}
+              >
                 {loading ? (
                   <span className="animate-pulse">...</span>
                 ) : (
