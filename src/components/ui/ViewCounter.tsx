@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Eye } from "lucide-react";
+import { pusherClient } from "@/lib/pusher";
 
 interface ViewCounterProps {
   variant?: "mobile" | "tablet" | "desktop";
@@ -25,79 +26,61 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
     onlineCount: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connected" | "connecting" | "disconnected"
+  >("connecting");
 
   useEffect(() => {
-    let eventSource: EventSource | null = null;
-    let retryCount = 0;
-    const maxRetries = 5;
+    const channel = pusherClient.subscribe("visitors-channel");
 
-    const setupSSE = () => {
-      if (retryCount >= maxRetries) {
-        console.error("Max retries reached");
-        return;
-      }
+    // Initial data fetch
+    fetch("/api/visitors/realtime", { method: "POST" })
+      .then((res) => res.json())
+      .then(() => {
+        setLoading(false);
+        setConnectionStatus("connected");
+      })
+      .catch((error) => {
+        console.error("Error fetching initial data:", error);
+        setConnectionStatus("disconnected");
+      });
 
-      if (eventSource) {
-        eventSource.close();
-      }
-
-      eventSource = new EventSource("/api/visitors/sse");
-
-      eventSource.onmessage = (event) => {
-        try {
-          const newData = JSON.parse(event.data);
-          setData(newData);
-          setLoading(false);
-          retryCount = 0; // Reset retry count on successful connection
-        } catch (error) {
-          console.error("Error parsing SSE data:", error);
-        }
-      };
-
-      eventSource.onerror = (error) => {
-        console.error("SSE Error:", error);
-        eventSource?.close();
-        retryCount++;
-
-        // Exponential backoff for retry
-        const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 30000);
-        setTimeout(setupSSE, retryDelay);
-      };
-    };
-
-    setupSSE();
-    setMounted(true);
-
-    // Handle tab close atau navigasi away
-    const handleOffline = async () => {
-      if (eventSource) {
-        eventSource.close();
-      }
-      try {
-        await fetch("/api/visitors/offline", {
-          method: "POST",
-          keepalive: true,
-        });
-      } catch (error) {
-        console.error("Error marking offline:", error);
-      }
-    };
-
-    window.addEventListener("beforeunload", handleOffline);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") {
-        handleOffline();
-      } else {
-        setupSSE();
-      }
+    // Listen for real-time updates
+    channel.bind("visitor-update", (newData: ViewCounterData) => {
+      setData(newData);
+      setLoading(false);
+      setConnectionStatus("connected");
     });
 
-    return () => {
-      window.removeEventListener("beforeunload", handleOffline);
-      if (eventSource) {
-        eventSource.close();
+    // Connection status handling
+    pusherClient.connection.bind("connected", () => {
+      setConnectionStatus("connected");
+    });
+
+    pusherClient.connection.bind("connecting", () => {
+      setConnectionStatus("connecting");
+    });
+
+    pusherClient.connection.bind("disconnected", () => {
+      setConnectionStatus("disconnected");
+    });
+
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetch("/api/visitors/realtime", { method: "POST" }).catch(
+          console.error,
+        );
       }
-      handleOffline();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    setMounted(true);
+
+    // Cleanup
+    return () => {
+      pusherClient.unsubscribe("visitors-channel");
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -150,7 +133,15 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
               variant === "mobile" ? "text-[10px]" : "text-xs"
             }`}
           >
-            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500"></div>
+            <div
+              className={`h-1.5 w-1.5 rounded-full ${
+                connectionStatus === "connected"
+                  ? "animate-pulse bg-green-500"
+                  : connectionStatus === "connecting"
+                    ? "animate-pulse bg-yellow-500"
+                    : "bg-red-500"
+              }`}
+            ></div>
             <span className="text-neutral-400">
               {loading ? (
                 <span className="animate-pulse">...</span>

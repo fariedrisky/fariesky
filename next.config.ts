@@ -12,7 +12,32 @@ const config: NextConfig = {
           }
         }]
       }
+    },
+    serverActions: {
+      bodySizeLimit: '2mb',
+      allowedOrigins: ['*']
     }
+  },
+  async headers() {
+    return [
+      {
+        source: '/api/visitors/sse',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate'
+          },
+          {
+            key: 'Connection',
+            value: 'keep-alive'
+          },
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*'
+          }
+        ]
+      }
+    ];
   }
 };
 
