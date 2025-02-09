@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Eye, Moon } from "lucide-react";
 import { pusherClient } from "@/lib/pusher";
+import _ from "lodash";
 
 interface ViewCounterProps {
   variant?: "mobile" | "tablet" | "desktop";
@@ -43,7 +44,7 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
   useEffect(() => {
     const tabId = Math.random().toString(36).substring(7);
     const channel = pusherClient.subscribe("visitors-channel");
-    let heartbeatInterval: NodeJS.Timeout;
+    let heartbeatInterval: NodeJS.Timeout | null;
 
     const updateVisitorStatus = async (status: ConnectionState) => {
       const browserId = getBrowserId();
@@ -63,20 +64,24 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
         setLoading(false);
       } catch (error) {
         console.error("Error updating visitor status:", error);
-        console.error("Connection failed");
       }
     };
 
     const startHeartbeat = () => {
-      updateVisitorStatus(document.visibilityState === "visible" ? "connected" : "idle");
+      // Initial status update
+      updateVisitorStatus("connected");
+      
+      // Set longer interval to reduce server load
       heartbeatInterval = setInterval(() => {
-        updateVisitorStatus(document.visibilityState === "visible" ? "connected" : "idle");
-      }, 15000);
+        const status = document.visibilityState === "visible" ? "connected" : "idle";
+        updateVisitorStatus(status);
+      }, 30000); // Increased to 30 seconds
     };
 
     const stopHeartbeat = () => {
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
       }
       const browserId = getBrowserId();
       fetch("/api/visitors/realtime", {
@@ -90,21 +95,24 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        localStorage.setItem('tab_active', tabId);
-        updateVisitorStatus("connected");
-        startHeartbeat();
-      } else {
-        updateVisitorStatus("idle");
-        stopHeartbeat();
-      }
+      // Use RAF to debounce visibility changes
+      requestAnimationFrame(() => {
+        if (document.visibilityState === "visible") {
+          localStorage.setItem('tab_active', tabId);
+          updateVisitorStatus("connected");
+          startHeartbeat();
+        } else {
+          updateVisitorStatus("idle");
+          stopHeartbeat();
+        }
+      });
     };
 
-    const handleUserActivity = () => {
+    const handleUserActivity = _.debounce(() => {
       if (document.visibilityState === "visible") {
         updateVisitorStatus("connected");
       }
-    };
+    }, 1000);
 
     channel.bind("visitor-update", (newData: ViewCounterData) => {
       setData(newData);
