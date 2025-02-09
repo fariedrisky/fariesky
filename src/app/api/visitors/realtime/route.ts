@@ -10,49 +10,41 @@ const redis = new Redis({
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { status, browserId } = body;
-
-        const onlineKey = `online:${browserId}`;
-        const idleKey = `idle:${browserId}`;
-        const visitorKey = `visitor:${browserId}`;
-
-        // Handle user status
-        if (status === 'idle') {
-            // Remove from online and set as idle
-            await Promise.all([
-                redis.del(onlineKey),
-                redis.set(idleKey, new Date().toISOString(), { ex: 30 })
-            ]);
-        } else if (status === 'connected') {
-            // Remove from idle and set as online
-            await Promise.all([
-                redis.del(idleKey),
-                redis.set(onlineKey, new Date().toISOString(), { ex: 30 })
-            ]);
+        const { status, browserId, action } = body;
+        
+        // Handle status change
+        if (action === "status_change") {
+            if (status === 'idle') {
+                await redis.sadd('idle_users', browserId);
+                await redis.srem('online_users', browserId);
+            } else if (status === 'connected') {
+                await redis.sadd('online_users', browserId);
+                await redis.srem('idle_users', browserId);
+            }
         }
 
-        const now = new Date();
-        const monthKey = `visitors:${now.getFullYear()}-${now.getMonth() + 1}`;
-
-        // Check if this is a new visitor (browser)
+        // Check if this is a new visitor
+        const visitorKey = `visitor:${browserId}`;
         const isExistingVisitor = await redis.exists(visitorKey);
         if (!isExistingVisitor) {
+            const now = new Date();
+            const monthKey = `visitors:${now.getFullYear()}-${now.getMonth() + 1}`;
             await Promise.all([
                 redis.incr('visitors:total'),
                 redis.incr(monthKey),
-                redis.set(visitorKey, new Date().toISOString(), { ex: 86400 }) // 24 hours
+                redis.set(visitorKey, new Date().toISOString())
             ]);
         }
 
-        const [monthlyCount, totalCount] = await Promise.all([
+        // Get current counts
+        const now = new Date();
+        const monthKey = `visitors:${now.getFullYear()}-${now.getMonth() + 1}`;
+        
+        const [monthlyCount, totalCount, onlineUsers, idleUsers] = await Promise.all([
             redis.get<number>(monthKey) || 0,
             redis.get<number>('visitors:total') || 0,
-        ]);
-
-        // Get active and idle users count by unique browsers
-        const [activeUsers, idleUsers] = await Promise.all([
-            redis.keys('online:*'),
-            redis.keys('idle:*')
+            redis.smembers('online_users'),
+            redis.smembers('idle_users')
         ]);
 
         const visitorData = {
@@ -60,7 +52,7 @@ export async function POST(request: NextRequest) {
             monthlyCount,
             month: now.toLocaleString("default", { month: "short" }),
             year: now.getFullYear(),
-            onlineCount: activeUsers.length,
+            onlineCount: onlineUsers.length,
             idleCount: idleUsers.length
         };
 
@@ -77,21 +69,22 @@ export async function DELETE(request: NextRequest) {
     try {
         const body = await request.json();
         const { browserId } = body;
-
+        
         if (browserId) {
+            // Remove from both sets
             await Promise.all([
-                redis.del(`online:${browserId}`),
-                redis.del(`idle:${browserId}`)
+                redis.srem('online_users', browserId),
+                redis.srem('idle_users', browserId)
             ]);
 
             const now = new Date();
             const monthKey = `visitors:${now.getFullYear()}-${now.getMonth() + 1}`;
 
-            const [monthlyCount, totalCount, activeUsers, idleUsers] = await Promise.all([
+            const [monthlyCount, totalCount, onlineUsers, idleUsers] = await Promise.all([
                 redis.get<number>(monthKey) || 0,
                 redis.get<number>('visitors:total') || 0,
-                redis.keys('online:*'),
-                redis.keys('idle:*')
+                redis.smembers('online_users'),
+                redis.smembers('idle_users')
             ]);
 
             const visitorData = {
@@ -99,7 +92,7 @@ export async function DELETE(request: NextRequest) {
                 monthlyCount,
                 month: now.toLocaleString("default", { month: "short" }),
                 year: now.getFullYear(),
-                onlineCount: activeUsers.length,
+                onlineCount: onlineUsers.length,
                 idleCount: idleUsers.length
             };
 
