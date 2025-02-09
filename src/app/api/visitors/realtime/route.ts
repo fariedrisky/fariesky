@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 import { pusherServer } from "@/lib/pusher";
 import { VisitorData, StatusChangeRequest } from "@/types/visitors";
+import { getDeviceInfo } from "@/utils/deviceDetection";
 
 const redis = new Redis({
     url: process.env.KV_REST_API_URL || '',
@@ -10,16 +11,7 @@ const redis = new Redis({
 
 const CACHE_TTL = 5; // 5 seconds
 
-// Moved to a separate utility file if needed
-// export async function cleanupOldData() {
-//     const now = new Date();
-//     const currentMonthKey = `visitors:${now.getFullYear()}-${now.getMonth() + 1}`;
-//     const keys = await redis.keys('visitors:*');
-//     const oldKeys = keys.filter(key => key !== currentMonthKey);
-//     if (oldKeys.length > 0) {
-//         await redis.del(...oldKeys);
-//     }
-// }
+
 
 async function getVisitorData(): Promise<VisitorData> {
     const now = new Date();
@@ -110,21 +102,29 @@ export async function POST(request: NextRequest) {
         // Get the real IP address using headers
         const forwardedFor = request.headers.get("x-forwarded-for");
         const realIP = request.headers.get("x-real-ip");
-        
+        const userAgent = request.headers.get("user-agent") || "Unknown Device";
+
         // Get IP address and handle localhost cases
         const ip = forwardedFor
             ? forwardedFor.split(',')[0]
             : realIP || '127.0.0.1';  // Default to localhost if no IP found
 
-        // Log IP information for debugging
-        console.log('IP Details:', {
-            forwardedFor: forwardedFor || 'none',
-            realIP: realIP || 'none',
-            finalIP: ip,
-            isLocalhost: ip === '127.0.0.1' || ip === '::1'
-        });
+        // Get device information
+        const deviceInfo = getDeviceInfo(userAgent);
 
-        console.log('Incoming request from IP:', ip);
+        // Log enhanced visitor information
+        console.log('Visitor Details:', {
+            ip: {
+                forwardedFor: forwardedFor || 'none',
+                realIP: realIP || 'none',
+                finalIP: ip,
+                isLocalhost: ip === '127.0.0.1' || ip === '::1'
+            },
+            device: {
+                ...deviceInfo,
+                userAgent
+            }
+        });
 
         const body = await request.json();
         const { status } = body as StatusChangeRequest;
