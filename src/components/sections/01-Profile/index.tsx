@@ -29,14 +29,14 @@ export default function Profile({ variant }: ProfileProps) {
   }
 
   return (
-    <Card className="w-full bg-white p-6">
+    <Card className="w-full !rounded-[35px] bg-white p-6">
       <CardContent className="p-0">
         <div className="flex flex-col">
           <div className="mb-6">
             <Image
               src="/assets/images/avatar.jpg"
               alt="Profile"
-              className="h-72 w-full rounded-2xl object-cover"
+              className="h-72 w-full rounded-[30px] object-cover"
               width={400}
               height={288}
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

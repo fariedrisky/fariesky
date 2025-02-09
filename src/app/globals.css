@@ -9,13 +9,13 @@
 
 /* For the entire scrollbar */
 ::-webkit-scrollbar {
-  width: 12px;
+  width: 8px;
   /* Adjust the width of the scrollbar */
 }
 
 /* For the scrollbar thumb */
 ::-webkit-scrollbar-thumb {
-  border-radius: 4px;
+  border-radius: 3.5px;
   background-color: darkgrey;
   /* The color of the scrollbar thumb */
 }
