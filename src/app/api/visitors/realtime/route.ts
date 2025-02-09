@@ -2,8 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 import { pusherServer } from "@/lib/pusher";
-import { StatusChangeRequest, DeviceInfo } from "@/types/visitors";
-import { getDeviceInfo } from "@/utils/deviceDetection";
+import { StatusChangeRequest } from "@/types/visitors";
 
 const redis = new Redis({
     url: process.env.KV_REST_API_URL || '',
@@ -15,11 +14,8 @@ const OFFLINE_TIMEOUT = 60 * 1000; // 1 minute timeout for offline cleanup
 
 interface VisitorDetails {
     id: string;
-    userAgent: string;
-    deviceInfo: DeviceInfo;
     lastSeen: string;
     status: 'online' | 'idle' | 'offline';
-    lastActive: string;
 }
 
 interface VisitorData {
@@ -47,7 +43,7 @@ async function getVisitorDetails(id: string): Promise<VisitorDetails | null> {
         }
         return null;
     } catch (error) {
-        console.error(`Error getting visitor details for ${id}:`, error);
+        console.error('Error getting visitor details:', error);
         return null;
     }
 }
@@ -60,26 +56,23 @@ async function cleanupInactiveVisitors(): Promise<void> {
         const allVisitors = await redis.smembers(`${monthKey}:visitors`);
         for (const visitorId of allVisitors) {
             const details = await getVisitorDetails(visitorId);
-
             if (!details) continue;
 
             const lastSeenTime = new Date(details.lastSeen).getTime();
             const timeDiff = now.getTime() - lastSeenTime;
 
             if (details.status === 'idle' && timeDiff > IDLE_TIMEOUT) {
-                console.log(`Setting offline - idle timeout: ${visitorId}`);
-                await updateVisitorStatus(visitorId, details.userAgent, 'offline');
+                await updateVisitorStatus(visitorId, 'offline');
             } else if (details.status === 'online' && timeDiff > IDLE_TIMEOUT) {
-                console.log(`Setting idle - activity timeout: ${visitorId}`);
-                await updateVisitorStatus(visitorId, details.userAgent, 'idle');
+                await updateVisitorStatus(visitorId, 'idle');
             } else if (timeDiff > OFFLINE_TIMEOUT) {
-                console.log(`Removing inactive visitor: ${visitorId}`);
                 await redis.del(`visitor:${visitorId}:details`);
                 await redis.srem(`${monthKey}:visitors`, visitorId);
             }
         }
     } catch (error) {
-        console.error('Error in cleanupInactiveVisitors:', error);
+        console.error("Error during cleanup:", error);
+        // Ignore cleanup errors
     }
 }
 
@@ -108,7 +101,7 @@ async function getVisitorData(): Promise<VisitorData> {
             idleCount
         };
     } catch (error) {
-        console.error('Error in getVisitorData:', error);
+        console.error('Error getting visitor data:', error);
         return {
             monthlyCount: 0,
             month: now.toLocaleString("default", { month: "short" }),
@@ -121,7 +114,6 @@ async function getVisitorData(): Promise<VisitorData> {
 
 async function updateVisitorStatus(
     visitorId: string,
-    userAgent: string,
     status: 'online' | 'idle' | 'offline'
 ): Promise<void> {
     try {
@@ -129,36 +121,24 @@ async function updateVisitorStatus(
         const currentDetails = await getVisitorDetails(visitorId);
         const now = new Date();
 
-        // Don't update if status hasn't changed
         if (currentDetails?.status === status) {
             return;
         }
 
-        console.log(`\n=== Quick Status Update ===`);
-        console.log(`Visitor: ${visitorId.slice(0, 8)}...`);
-        console.log(`${currentDetails?.status || 'new'} -> ${status}`);
-
-        const deviceInfo: DeviceInfo = getDeviceInfo(userAgent);
         const visitorDetails: VisitorDetails = {
             id: visitorId,
-            userAgent,
-            deviceInfo,
             lastSeen: now.toISOString(),
-            status,
-            lastActive: status === 'online' ? now.toISOString() : (currentDetails?.lastActive || now.toISOString())
+            status
         };
 
         if (status === 'offline') {
             await redis.del(`visitor:${visitorId}:details`);
             await redis.srem(`${monthKey}:visitors`, visitorId);
         } else {
-            const stringifiedDetails = JSON.stringify(visitorDetails);
-            await redis.set(`visitor:${visitorId}:details`, stringifiedDetails);
+            await redis.set(`visitor:${visitorId}:details`, JSON.stringify(visitorDetails));
             await redis.sadd(`${monthKey}:visitors`, visitorId);
         }
-
     } catch (error) {
-        console.error('Error in updateVisitorStatus:', error);
         throw error;
     }
 }
@@ -166,7 +146,6 @@ async function updateVisitorStatus(
 export async function POST(request: NextRequest) {
     try {
         const visitorId = request.headers.get("X-Visitor-ID");
-        const userAgent = request.headers.get("user-agent") || "Unknown Device";
 
         if (!visitorId) {
             return NextResponse.json(
@@ -178,16 +157,9 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { status } = body as StatusChangeRequest;
 
-        // Quick cleanup before processing new status
         await cleanupInactiveVisitors();
-
-        // Update the status
-        await updateVisitorStatus(visitorId, userAgent, status);
-
-        // Get latest data after update
+        await updateVisitorStatus(visitorId, status);
         const visitorData = await getVisitorData();
-
-        // Broadcast update to all clients
         await pusherServer.trigger('visitors-channel', 'visitor-update', visitorData);
 
         return NextResponse.json({
@@ -196,9 +168,9 @@ export async function POST(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error('Error in POST handler:', error);
+        console.error("Error updating visitor status:", error);
         return NextResponse.json(
-            { error: "Internal server error", details: error instanceof Error ? error.message : 'Unknown error' },
+            { error: "Internal server error" },
             { status: 500 }
         );
     }
