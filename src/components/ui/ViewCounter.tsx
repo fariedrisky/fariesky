@@ -32,29 +32,53 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
 
   useEffect(() => {
     const channel = pusherClient.subscribe("visitors-channel");
+    let heartbeatInterval: NodeJS.Timeout;
 
-    // Initial data fetch
-    fetch("/api/visitors/realtime", { method: "POST" })
-      .then((res) => res.json())
-      .then(() => {
-        setLoading(false);
-        setConnectionStatus("connected");
-      })
-      .catch((error) => {
-        console.error("Error fetching initial data:", error);
+    const updateVisitorStatus = async (method: "POST" | "DELETE") => {
+      try {
+        const response = await fetch("/api/visitors/realtime", {
+          method,
+          credentials: "include", // Important for cookies
+        });
+        if (!response.ok) throw new Error("Failed to update visitor status");
+
+        if (method === "POST") {
+          setConnectionStatus("connected");
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error updating visitor status:", error);
         setConnectionStatus("disconnected");
-      });
+      }
+    };
+
+    // Start heartbeat
+    const startHeartbeat = () => {
+      updateVisitorStatus("POST"); // Initial check-in
+      heartbeatInterval = setInterval(() => {
+        updateVisitorStatus("POST");
+      }, 20000); // Every 20 seconds
+    };
+
+    // Stop heartbeat
+    const stopHeartbeat = () => {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
+      updateVisitorStatus("DELETE");
+    };
 
     // Listen for real-time updates
     channel.bind("visitor-update", (newData: ViewCounterData) => {
+      console.log("Received update:", newData); // Debug log
       setData(newData);
       setLoading(false);
-      setConnectionStatus("connected");
     });
 
     // Connection status handling
     pusherClient.connection.bind("connected", () => {
       setConnectionStatus("connected");
+      startHeartbeat();
     });
 
     pusherClient.connection.bind("connecting", () => {
@@ -63,24 +87,36 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
 
     pusherClient.connection.bind("disconnected", () => {
       setConnectionStatus("disconnected");
+      stopHeartbeat();
     });
 
     // Handle visibility change
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        fetch("/api/visitors/realtime", { method: "POST" }).catch(
-          console.error,
-        );
+        startHeartbeat();
+      } else {
+        stopHeartbeat();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", () => {
+      stopHeartbeat();
+    });
+
+    // Initial setup
+    startHeartbeat();
     setMounted(true);
 
     // Cleanup
     return () => {
+      stopHeartbeat();
+      channel.unbind("visitor-update");
       pusherClient.unsubscribe("visitors-channel");
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", () => {
+        stopHeartbeat();
+      });
     };
   }, []);
 
