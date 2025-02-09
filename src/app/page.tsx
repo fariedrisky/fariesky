@@ -12,12 +12,12 @@ import Footer from "@/components/layouts/01-Footer";
 import Course from "@/components/sections/08-Course-Training";
 import Languages from "@/components/sections/09-Languages";
 import AnimatedSection from "@/components/ui/AnimatedSection";
-//import ViewCounter from "@/components/ui/ViewCounter";
+import ViewCounter from "@/components/ui/ViewCounter";
 
 export default function Home() {
   return (
     <main className="relative min-h-screen bg-neutral-50">
-      {/*<ViewCounter />*/}
+      <ViewCounter />
       {/* Desktop Layout (lg and above) */}
       <div className="mx-auto hidden max-w-7xl gap-8 p-8 lg:flex">
         {/* Left Side - Fixed Profile */}

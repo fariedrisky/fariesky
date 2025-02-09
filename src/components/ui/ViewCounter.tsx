@@ -13,36 +13,27 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
   const [currentMonth, setCurrentMonth] = useState("");
 
   useEffect(() => {
+    const fetchVisitorCount = async () => {
+      try {
+        const response = await fetch("/api/visitors", {
+          // Add cache: 'no-store' to prevent caching
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch");
+        }
+
+        const data = await response.json();
+        setViews(data.count);
+        setCurrentMonth(`${data.month} ${data.year}`);
+      } catch (error) {
+        console.error("Error fetching visitor count:", error);
+      }
+    };
+
+    fetchVisitorCount();
     setMounted(true);
-
-    const now = new Date();
-    const month = now.toLocaleString("default", { month: "short" });
-    const year = now.getFullYear();
-    const monthKey = `${year}-${now.getMonth() + 1}`;
-
-    setCurrentMonth(`${month} ${year}`);
-
-    const storedData = localStorage.getItem("monthlyPageViews");
-    const viewsData = storedData ? JSON.parse(storedData) : {};
-    const today = now.toISOString().split("T")[0];
-
-    if (!viewsData[monthKey]) {
-      viewsData[monthKey] = {
-        count: 1,
-        lastVisit: today,
-      };
-      setViews(1);
-    } else if (viewsData[monthKey].lastVisit !== today) {
-      viewsData[monthKey] = {
-        count: viewsData[monthKey].count + 1,
-        lastVisit: today,
-      };
-      setViews(viewsData[monthKey].count);
-    } else {
-      setViews(viewsData[monthKey].count);
-    }
-
-    localStorage.setItem("monthlyPageViews", JSON.stringify(viewsData));
   }, []);
 
   if (!mounted) return null;
@@ -52,11 +43,7 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
       className={`fixed z-50 transition-all duration-300 ease-in-out ${variant === "mobile" ? "bottom-3 right-3" : "bottom-4 right-4"} `}
     >
       <div
-        className={`border border-neutral-200/50 bg-white/90 shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out hover:bg-white ${
-          variant === "mobile"
-            ? "rounded-lg px-2.5 py-1.5"
-            : "rounded-full px-4 py-2"
-        } `}
+        className={`border border-neutral-200/50 bg-white/90 shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out hover:bg-white ${variant === "mobile" ? "rounded-lg px-2.5 py-1.5" : "rounded-full px-4 py-2"} `}
       >
         <div className="flex items-center gap-2">
           <div
