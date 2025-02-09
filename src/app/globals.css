@@ -3,27 +3,27 @@
 @tailwind utilities;
 
 .go2072408551 {
-    border: 1px solid #e0e0e0 !important;
-    border-radius: 16px !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 16px !important;
 }
 
 /* For the entire scrollbar */
 ::-webkit-scrollbar {
-    width: 12px;
-    /* Adjust the width of the scrollbar */
+  width: 12px;
+  /* Adjust the width of the scrollbar */
 }
 
 /* For the scrollbar thumb */
 ::-webkit-scrollbar-thumb {
-    border-radius: 4px;
-    background-color: darkgrey;
-    /* The color of the scrollbar thumb */
+  border-radius: 4px;
+  background-color: darkgrey;
+  /* The color of the scrollbar thumb */
 }
 
 /* For the scrollbar track */
 ::-webkit-scrollbar-track {
-    background: lightgrey;
-    /* Color of the scrollbar track */
+  background: #fafafa;
+  /* Color of the scrollbar track */
 }
 
 /* Modal specific scrollbar styles */
@@ -46,4 +46,3 @@
 .modal-scroll::-webkit-scrollbar-thumb:hover {
   background-color: #9ca3af;
 }
-

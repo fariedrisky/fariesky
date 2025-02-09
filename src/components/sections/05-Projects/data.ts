@@ -56,7 +56,7 @@ export const projectsData: ProjectsData = {
         },
         {
             id: 3,
-            title: "Unaya.ac.id",
+            title: "Unaya",
             description: "Abulyatama University website that presents the latest news, event information, as well as various activities and important announcements about the campus in a complete and updated manner.",
             image: [
                 "/assets/images/projects/unaya.jpg",
