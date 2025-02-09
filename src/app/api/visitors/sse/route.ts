@@ -10,6 +10,9 @@ export const runtime = 'edge';
 export const preferredRegion = 'sin1';
 export const dynamic = 'force-dynamic';
 
+// Set shorter connection time to avoid timeout
+const MAX_DURATION = 25000; // 25 seconds
+
 export async function GET(request: NextRequest) {
     const stream = new TransformStream();
     const writer = stream.writable.getWriter();
@@ -47,31 +50,38 @@ export async function GET(request: NextRequest) {
     };
 
     try {
+        const startTime = Date.now();
+
         // Send initial data
         const initialData = await getVisitorData();
         const initialDataString = `data: ${JSON.stringify(initialData)}\n\n`;
         await writer.write(encoder.encode(initialDataString));
 
-        // Kirim ping setiap 15 detik untuk menjaga koneksi
-        const pingInterval = setInterval(async () => {
-            await writer.write(encoder.encode(": ping\n\n"));
-        }, 15000);
+        // Force close after MAX_DURATION
+        setTimeout(async () => {
+            await redis.del(onlineKey);
+            writer.close();
+        }, MAX_DURATION);
 
-        // Update data setiap 30 detik
-        const updateInterval = setInterval(async () => {
+        // Send updates every 5 seconds until MAX_DURATION
+        const interval = setInterval(async () => {
+            if (Date.now() - startTime >= MAX_DURATION) {
+                clearInterval(interval);
+                return;
+            }
+
             try {
                 const data = await getVisitorData();
                 const dataString = `data: ${JSON.stringify(data)}\n\n`;
                 await writer.write(encoder.encode(dataString));
             } catch (error) {
-                console.error('Error sending SSE update:', error);
+                console.error('Error sending update:', error);
             }
-        }, 30000);
+        }, 5000);
 
         // Cleanup on client disconnect
         request.signal.addEventListener('abort', async () => {
-            clearInterval(pingInterval);
-            clearInterval(updateInterval);
+            clearInterval(interval);
             await redis.del(onlineKey);
             writer.close();
         });
@@ -81,11 +91,11 @@ export async function GET(request: NextRequest) {
                 'Content-Type': 'text/event-stream',
                 'Cache-Control': 'no-cache, no-transform',
                 'Connection': 'keep-alive',
-                'X-Accel-Buffering': 'no'
             },
         });
     } catch (error) {
         console.error('SSE Error:', error);
+        await redis.del(onlineKey);
         return new Response('Error', { status: 500 });
     }
 }
