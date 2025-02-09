@@ -1,10 +1,10 @@
 // components/ViewCounter.tsx
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Eye, Moon } from "lucide-react";
 import { pusherClient } from "@/lib/pusher";
-import type { VisitorData, PusherError } from "@/types/visitors";
+import type { VisitorData } from "@/types/visitors";
 import { v4 as uuidv4 } from "uuid";
 
 interface ViewCounterProps {
@@ -13,9 +13,10 @@ interface ViewCounterProps {
 
 const VISITOR_ID_KEY = "visitor_uuid";
 const LAST_STATUS_KEY = "last_visitor_status";
+const STATUS_UPDATE_DEBOUNCE = 200;
 
 export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
-  const [mounted, setMounted] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [visitorId, setVisitorId] = useState<string>("");
   const [currentStatus, setCurrentStatus] = useState<
     "online" | "idle" | "offline"
@@ -30,7 +31,11 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize or get visitor UUID and last status
+  // Use refs instead of state for timeouts
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(false);
+
+  // Initialize visitor ID only once
   useEffect(() => {
     let id = localStorage.getItem(VISITOR_ID_KEY);
     if (!id) {
@@ -38,27 +43,20 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       localStorage.setItem(VISITOR_ID_KEY, id);
     }
     setVisitorId(id);
+    mountedRef.current = true;
 
-    const lastStatus = localStorage.getItem(LAST_STATUS_KEY) as
-      | "online"
-      | "idle"
-      | null;
-    if (lastStatus) {
-      setCurrentStatus(lastStatus);
-    }
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
-  // Memoized update status function
   const updateStatus = useCallback(
     async (status: "online" | "idle" | "offline") => {
-      if (!visitorId) return;
+      if (!visitorId || !mountedRef.current) return;
+      if (status === currentStatus) return;
 
       try {
         setError(null);
-
-        // Only update if status actually changed
-        if (status === currentStatus) return;
-
         setCurrentStatus(status);
         localStorage.setItem(LAST_STATUS_KEY, status);
 
@@ -77,109 +75,95 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
         }
 
         const result = await response.json();
-        if (result.data) {
+        if (result.data && mountedRef.current) {
           setData(result.data);
         }
       } catch (error) {
         console.error("Error updating status:", error);
-        setError(
-          error instanceof Error ? error.message : "Unknown error occurred",
-        );
+        if (mountedRef.current) {
+          setError(
+            error instanceof Error ? error.message : "Unknown error occurred",
+          );
+        }
       }
     },
     [visitorId, currentStatus],
   );
 
-  // Handle tab/window close
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (visitorId) {
-        localStorage.removeItem(LAST_STATUS_KEY);
-        const data = JSON.stringify({ status: "offline" });
-        navigator.sendBeacon(
-          `/api/visitors/realtime?visitorId=${visitorId}`,
-          data,
-        );
+  const debouncedStatusUpdate = useCallback(
+    (status: "online" | "idle" | "offline") => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
-    };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [visitorId]);
+      debounceTimeoutRef.current = setTimeout(() => {
+        updateStatus(status);
+      }, STATUS_UPDATE_DEBOUNCE);
+    },
+    [updateStatus],
+  );
 
-  // Handle visibility change
   const handleVisibilityChange = useCallback(() => {
-    if (document.visibilityState === "visible") {
-      updateStatus("online");
-    } else {
-      // Only go idle if we were previously online
-      if (currentStatus === "online") {
-        updateStatus("idle");
-      }
-    }
-  }, [updateStatus, currentStatus]);
+    if (!mountedRef.current) return;
 
-  // Setup effect
+    const isVisible = document.visibilityState === "visible";
+    const isFocused = document.hasFocus();
+
+    if (isVisible && isFocused) {
+      debouncedStatusUpdate("online");
+    } else {
+      debouncedStatusUpdate("idle");
+    }
+  }, [debouncedStatusUpdate]);
+
+  // Setup Pusher and event listeners
   useEffect(() => {
     if (!visitorId) return;
 
-    let mounted = true;
-    let retryCount = 0;
-    const maxRetries = 3;
+    const channel = pusherClient.subscribe("visitors-channel");
 
-    const setupPusher = () => {
-      try {
-        const channel = pusherClient.subscribe("visitors-channel");
-
-        channel.bind("visitor-update", (newData: VisitorData) => {
-          if (mounted) {
-            setData(newData);
-            setLoading(false);
-          }
-        });
-
-        channel.bind("pusher:subscription_error", (error: PusherError) => {
-          console.error("Pusher subscription error:", error);
-          if (retryCount < maxRetries) {
-            retryCount++;
-            setTimeout(setupPusher, 2000 * retryCount);
-          }
-        });
-
-        return channel;
-      } catch (error) {
-        console.error("Error setting up Pusher:", error);
-        return null;
+    channel.bind("visitor-update", (newData: VisitorData) => {
+      if (mountedRef.current) {
+        setData(newData);
+        setLoading(false);
       }
-    };
+    });
 
-    const channel = setupPusher();
-
-    // Initial status update based on visibility
-    if (document.visibilityState === "visible") {
-      updateStatus("online");
+    // Initial status check
+    if (document.visibilityState === "visible" && document.hasFocus()) {
+      debouncedStatusUpdate("online");
     } else {
-      updateStatus("idle");
+      debouncedStatusUpdate("idle");
     }
 
+    // Event listeners
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", () => debouncedStatusUpdate("online"));
+    window.addEventListener("blur", () => debouncedStatusUpdate("idle"));
 
-    setMounted(true);
+    setIsLoaded(true);
 
+    // Cleanup
     return () => {
-      mounted = false;
-      if (channel) {
-        channel.unbind_all();
-        pusherClient.unsubscribe("visitors-channel");
-      }
+      channel.unbind_all();
+      pusherClient.unsubscribe("visitors-channel");
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      updateStatus("offline");
-    };
-  }, [handleVisibilityChange, updateStatus, visitorId]);
+      window.removeEventListener("focus", () =>
+        debouncedStatusUpdate("online"),
+      );
+      window.removeEventListener("blur", () => debouncedStatusUpdate("idle"));
 
-  if (!mounted) return null;
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+
+      if (mountedRef.current) {
+        updateStatus("offline");
+      }
+    };
+  }, [visitorId, handleVisibilityChange, debouncedStatusUpdate, updateStatus]);
+
+  if (!isLoaded) return null;
 
   return (
     <div

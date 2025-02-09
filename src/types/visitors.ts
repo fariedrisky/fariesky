@@ -20,6 +20,7 @@ export interface PusherError {
 }
 
 export interface DeviceInfo {
+    device: string;
     browser: string;
     browserVersion: string;
     os: string;

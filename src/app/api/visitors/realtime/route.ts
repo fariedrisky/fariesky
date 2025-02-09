@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 import { pusherServer } from "@/lib/pusher";
-import { VisitorData, StatusChangeRequest, DeviceInfo } from "@/types/visitors";
+import { StatusChangeRequest, DeviceInfo } from "@/types/visitors";
 import { getDeviceInfo } from "@/utils/deviceDetection";
 
 const redis = new Redis({
@@ -10,6 +10,8 @@ const redis = new Redis({
     token: process.env.KV_REST_API_TOKEN || '',
 });
 
+const IDLE_TIMEOUT = 30 * 1000; // 30 seconds timeout for idle
+const OFFLINE_TIMEOUT = 60 * 1000; // 1 minute timeout for offline cleanup
 
 interface VisitorDetails {
     id: string;
@@ -17,9 +19,17 @@ interface VisitorDetails {
     deviceInfo: DeviceInfo;
     lastSeen: string;
     status: 'online' | 'idle' | 'offline';
+    lastActive: string;
 }
 
-// Helper to get current month key
+interface VisitorData {
+    monthlyCount: number;
+    month: string;
+    year: number;
+    onlineCount: number;
+    idleCount: number;
+}
+
 function getCurrentMonthKey(): string {
     const now = new Date();
     return `visitors:${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -42,24 +52,51 @@ async function getVisitorDetails(id: string): Promise<VisitorDetails | null> {
     }
 }
 
+async function cleanupInactiveVisitors(): Promise<void> {
+    const monthKey = getCurrentMonthKey();
+    const now = new Date();
+
+    try {
+        const allVisitors = await redis.smembers(`${monthKey}:visitors`);
+        for (const visitorId of allVisitors) {
+            const details = await getVisitorDetails(visitorId);
+
+            if (!details) continue;
+
+            const lastSeenTime = new Date(details.lastSeen).getTime();
+            const timeDiff = now.getTime() - lastSeenTime;
+
+            if (details.status === 'idle' && timeDiff > IDLE_TIMEOUT) {
+                console.log(`Setting offline - idle timeout: ${visitorId}`);
+                await updateVisitorStatus(visitorId, details.userAgent, 'offline');
+            } else if (details.status === 'online' && timeDiff > IDLE_TIMEOUT) {
+                console.log(`Setting idle - activity timeout: ${visitorId}`);
+                await updateVisitorStatus(visitorId, details.userAgent, 'idle');
+            } else if (timeDiff > OFFLINE_TIMEOUT) {
+                console.log(`Removing inactive visitor: ${visitorId}`);
+                await redis.del(`visitor:${visitorId}:details`);
+                await redis.srem(`${monthKey}:visitors`, visitorId);
+            }
+        }
+    } catch (error) {
+        console.error('Error in cleanupInactiveVisitors:', error);
+    }
+}
+
 async function getVisitorData(): Promise<VisitorData> {
     const now = new Date();
     const monthKey = getCurrentMonthKey();
 
     try {
-        // Get all visitor IDs for the current month
         const monthlyVisitors = await redis.smembers(`${monthKey}:visitors`);
+        const visitorDetails = await Promise.all(
+            monthlyVisitors.map(id => getVisitorDetails(id))
+        );
 
-        // Get all visitor details
-        const visitorDetailsPromises = monthlyVisitors.map(id => getVisitorDetails(id));
-        const visitorDetails = await Promise.all(visitorDetailsPromises);
-
-        // Filter out null values and inactive visitors
         const validVisitors = visitorDetails.filter((v): v is VisitorDetails =>
             v !== null && v.status !== 'offline'
         );
 
-        // Count only active visitors
         const onlineCount = validVisitors.filter(v => v.status === 'online').length;
         const idleCount = validVisitors.filter(v => v.status === 'idle').length;
 
@@ -89,33 +126,32 @@ async function updateVisitorStatus(
 ): Promise<void> {
     try {
         const monthKey = getCurrentMonthKey();
-
-        // Get current visitor details
         const currentDetails = await getVisitorDetails(visitorId);
+        const now = new Date();
 
-        // If visitor is already in the desired state, do nothing
+        // Don't update if status hasn't changed
         if (currentDetails?.status === status) {
             return;
         }
 
-        // Get device info
-        const deviceInfo: DeviceInfo = getDeviceInfo(userAgent);
+        console.log(`\n=== Quick Status Update ===`);
+        console.log(`Visitor: ${visitorId.slice(0, 8)}...`);
+        console.log(`${currentDetails?.status || 'new'} -> ${status}`);
 
-        // Create visitor details
+        const deviceInfo: DeviceInfo = getDeviceInfo(userAgent);
         const visitorDetails: VisitorDetails = {
             id: visitorId,
             userAgent,
             deviceInfo,
-            lastSeen: new Date().toISOString(),
-            status
+            lastSeen: now.toISOString(),
+            status,
+            lastActive: status === 'online' ? now.toISOString() : (currentDetails?.lastActive || now.toISOString())
         };
 
         if (status === 'offline') {
-            // For offline status, remove the visitor details after delay
             await redis.del(`visitor:${visitorId}:details`);
-            console.log('Visitor marked as offline:', visitorId);
+            await redis.srem(`${monthKey}:visitors`, visitorId);
         } else {
-            // For online/idle status, update the details
             const stringifiedDetails = JSON.stringify(visitorDetails);
             await redis.set(`visitor:${visitorId}:details`, stringifiedDetails);
             await redis.sadd(`${monthKey}:visitors`, visitorId);
@@ -142,8 +178,16 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { status } = body as StatusChangeRequest;
 
+        // Quick cleanup before processing new status
+        await cleanupInactiveVisitors();
+
+        // Update the status
         await updateVisitorStatus(visitorId, userAgent, status);
+
+        // Get latest data after update
         const visitorData = await getVisitorData();
+
+        // Broadcast update to all clients
         await pusherServer.trigger('visitors-channel', 'visitor-update', visitorData);
 
         return NextResponse.json({
