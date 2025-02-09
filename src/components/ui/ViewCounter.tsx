@@ -12,6 +12,7 @@ interface ViewCounterData {
   monthlyCount: number;
   month: string;
   year: number;
+  onlineCount: number;
 }
 
 export default function ViewCounter({ variant }: ViewCounterProps) {
@@ -21,43 +22,71 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
     monthlyCount: 0,
     month: "",
     year: new Date().getFullYear(),
+    onlineCount: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchVisitors = async () => {
-      try {
-        const response = await fetch("/api/visitors", {
-          // Tambahkan cache: 'no-store' untuk memastikan data selalu fresh
-          cache: "no-store",
-        });
+    let eventSource: EventSource;
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch visitors data");
-        }
+    const setupSSE = () => {
+      eventSource = new EventSource("/api/visitors/sse");
 
-        const visitorData = await response.json();
-        setData(visitorData);
-      } catch (error) {
-        console.error("Error fetching visitors:", error);
-      } finally {
+      eventSource.onmessage = (event) => {
+        const newData = JSON.parse(event.data);
+        setData(newData);
         setLoading(false);
+      };
+
+      eventSource.onerror = (error) => {
+        console.error("SSE Error:", error);
+        eventSource.close();
+        // Retry connection after 5 seconds
+        setTimeout(setupSSE, 5000);
+      };
+    };
+
+    setupSSE();
+    setMounted(true);
+
+    // Handle tab close atau navigasi away
+    const handleBeforeUnload = async () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+      try {
+        const response = await fetch("/api/visitors/offline", {
+          method: "POST",
+          // Gunakan keepalive agar request tetap terkirim meski tab sudah ditutup
+          keepalive: true,
+        });
+        if (!response.ok) {
+          throw new Error("Failed to mark user as offline");
+        }
+      } catch (error) {
+        console.error("Error marking user offline:", error);
       }
     };
 
-    // Panggil fetchVisitors saat komponen mount
-    fetchVisitors();
+    // Handle ketika user menutup tab atau navigasi away
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    // Handle ketika user minimize browser atau switch tab
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        handleBeforeUnload();
+      }
+    });
 
-    // Set interval untuk memperbarui data setiap 5 menit
-    const intervalId = setInterval(fetchVisitors, 5 * 60 * 1000);
-
-    setMounted(true);
-
-    // Cleanup interval saat komponen unmount
-    return () => clearInterval(intervalId);
+    return () => {
+      // Cleanup
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (eventSource) {
+        eventSource.close();
+      }
+      handleBeforeUnload();
+    };
   }, []);
 
-  // Jangan render apa-apa sampai komponen mount
   if (!mounted) return null;
 
   return (
@@ -101,6 +130,20 @@ export default function ViewCounter({ variant }: ViewCounterProps) {
             ) : (
               `${data.month} ${data.year}`
             )}
+          </div>
+          <div
+            className={`flex items-center gap-1.5 border-l border-neutral-200 pl-2 ${
+              variant === "mobile" ? "text-[10px]" : "text-xs"
+            }`}
+          >
+            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500"></div>
+            <span className="text-neutral-400">
+              {loading ? (
+                <span className="animate-pulse">...</span>
+              ) : (
+                data.onlineCount
+              )}
+            </span>
           </div>
         </div>
       </div>
