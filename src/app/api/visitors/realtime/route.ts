@@ -18,11 +18,17 @@ export async function POST(request: NextRequest) {
 
         // Handle user status
         if (status === 'idle') {
-            await redis.del(onlineKey);
-            await redis.set(idleKey, new Date().toISOString(), { ex: 30 });
-        } else {
-            await redis.del(idleKey);
-            await redis.set(onlineKey, new Date().toISOString(), { ex: 30 });
+            // Remove from online and set as idle
+            await Promise.all([
+                redis.del(onlineKey),
+                redis.set(idleKey, new Date().toISOString(), { ex: 30 })
+            ]);
+        } else if (status === 'connected') {
+            // Remove from idle and set as online
+            await Promise.all([
+                redis.del(idleKey),
+                redis.set(onlineKey, new Date().toISOString(), { ex: 30 })
+            ]);
         }
 
         const now = new Date();
