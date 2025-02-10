@@ -7,7 +7,7 @@ export const education: EducationData = {
             school: "Syiah Kuala University",
             degree: "Bachelor of Informatics (S.Kom)",
             score: "GPA 3.50 / 4.00",
-            period: "Aug 2018 - Nov 2022",
+            period: "Sept 2018 - Sept 2022",
             location: "Banda Aceh, Indonesia",
             logo: "/assets/images/logo/education/usk.png",
         },
