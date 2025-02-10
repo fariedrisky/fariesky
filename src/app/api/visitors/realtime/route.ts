@@ -27,6 +27,20 @@ async function getCurrentMonthVisitors(): Promise<{
     };
 }
 
+// Fungsi untuk membersihkan data online yang tidak aktif
+async function cleanupStaleOnlineData() {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const onlineKey = `online:${monthKey}`;
+
+    try {
+        // Hapus key online jika masih ada
+        await redis.del(onlineKey);
+    } catch (error) {
+        console.error('Error cleaning up stale data:', error);
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         const visitorId = request.headers.get("X-Visitor-ID");
@@ -34,7 +48,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Visitor ID required" }, { status: 400 });
         }
 
-        const body = await request.json();
+        let body;
+        try {
+            body = await request.json();
+        } catch (error) {
+            console.error('Error parsing request body:', error);
+            return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+        }
+
         const { status, isNewVisit } = body;
 
         const now = new Date();
@@ -47,10 +68,11 @@ export async function POST(request: NextRequest) {
 
         // Handle online status
         const onlineKey = `online:${monthKey}`;
+
         if (status === "online") {
             await redis.sadd(onlineKey, visitorId);
-            // Set 1 minute expiry for online status - if no update received, user will be considered offline
-            await redis.expire(onlineKey, 60);
+            // Set 30 second expiry for online status
+            await redis.expire(onlineKey, 30);
         } else {
             await redis.srem(onlineKey, visitorId);
         }
@@ -75,4 +97,9 @@ export async function POST(request: NextRequest) {
             { status: 500 }
         );
     }
+}
+
+// Handle development cleanup
+if (process.env.NODE_ENV === 'development') {
+    cleanupStaleOnlineData();
 }

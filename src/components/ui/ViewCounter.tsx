@@ -19,6 +19,7 @@ interface VisitorData {
 
 const VISITOR_ID_KEY = "visitor_id";
 const MONTHLY_VISIT_KEY = "monthly_visit";
+const ONLINE_HEARTBEAT_INTERVAL = 20000; // 20 seconds
 
 export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   const [data, setData] = useState<VisitorData>({
@@ -48,7 +49,10 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
           }),
         });
 
-        if (!response.ok) throw new Error("Failed to update visitor status");
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to update visitor status: ${errorText}`);
+        }
 
         const result = await response.json();
         if (result.data) {
@@ -100,10 +104,25 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   useEffect(() => {
     if (!visitorId) return;
 
+    let heartbeatInterval: NodeJS.Timeout | null = null;
+
     // Function to handle visibility change
     const handleVisibilityChange = () => {
       const isVisible = document.visibilityState === "visible";
       updateOnlineStatus(isVisible);
+
+      // Clear existing heartbeat
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
+
+      // Set up new heartbeat if online
+      if (isVisible) {
+        heartbeatInterval = setInterval(() => {
+          updateOnlineStatus(true);
+        }, ONLINE_HEARTBEAT_INTERVAL);
+      }
     };
 
     // Set up Pusher subscription
@@ -117,6 +136,12 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
     const isInitiallyVisible = document.visibilityState === "visible";
     updateOnlineStatus(isInitiallyVisible);
 
+    if (isInitiallyVisible) {
+      heartbeatInterval = setInterval(() => {
+        updateOnlineStatus(true);
+      }, ONLINE_HEARTBEAT_INTERVAL);
+    }
+
     // Add visibility change listener
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
@@ -128,6 +153,9 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
     // Cleanup
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
       updateOnlineStatus(false);
       channel.unbind_all();
       pusherClient.unsubscribe("visitors-channel");
