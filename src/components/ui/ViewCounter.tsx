@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Eye, User } from "lucide-react";
 import { pusherClient } from "@/lib/pusher";
 import { v4 as uuidv4 } from "uuid";
+import Cookies from "js-cookie";
 
 interface ViewCounterProps {
   variant?: "mobile" | "tablet" | "desktop";
@@ -16,9 +17,9 @@ interface VisitorData {
   onlineCount: number;
 }
 
-const DEVICE_ID_KEY = "device_id";
+const VISITOR_ID_KEY = "visitor_id";
 const MONTHLY_VISIT_KEY = "monthly_visit";
-const ONLINE_HEARTBEAT_INTERVAL = 20000;
+const ONLINE_HEARTBEAT_INTERVAL = 20000; // 20 seconds
 
 export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   const [data, setData] = useState<VisitorData>({
@@ -28,25 +29,24 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
     onlineCount: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [deviceId, setDeviceId] = useState<string>("");
+  const [visitorId, setVisitorId] = useState<string>("");
 
+  // Function to update online status
   const updateOnlineStatus = useCallback(
     async (isOnline: boolean) => {
-      if (!deviceId) return;
+      if (!visitorId) return;
 
       try {
         const now = new Date();
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const lastVisitMonth = localStorage.getItem(MONTHLY_VISIT_KEY);
-
-        // Consider it a new visit only if this is first visit this month
+        const lastVisitMonth = Cookies.get(MONTHLY_VISIT_KEY);
         const isNewVisit = !lastVisitMonth || lastVisitMonth !== currentMonth;
 
         const response = await fetch("/api/visitors/realtime", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Device-ID": deviceId,
+            "X-Visitor-ID": visitorId,
           },
           body: JSON.stringify({
             status: isOnline ? "online" : "offline",
@@ -64,46 +64,60 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
           setData(result.data);
           setLoading(false);
 
+          // Update monthly visit cookie if it's a new visit
           if (isNewVisit) {
-            localStorage.setItem(MONTHLY_VISIT_KEY, currentMonth);
+            Cookies.set(MONTHLY_VISIT_KEY, currentMonth, {
+              // Set cookie to expire at the end of the month
+              expires: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+              sameSite: "Strict",
+              path: "/",
+            });
           }
         }
       } catch (error) {
         console.error("Error updating status:", error);
       }
     },
-    [deviceId],
+    [visitorId],
   );
 
+  // Initial setup
   useEffect(() => {
-    const setupDevice = () => {
-      // Get or create device ID from localStorage
-      let id = localStorage.getItem(DEVICE_ID_KEY);
+    const setupVisitor = () => {
+      // Get or create visitor ID (persists for 1 year)
+      let id = Cookies.get(VISITOR_ID_KEY);
       if (!id) {
         id = uuidv4();
-        localStorage.setItem(DEVICE_ID_KEY, id);
+        Cookies.set(VISITOR_ID_KEY, id, {
+          expires: 365,
+          sameSite: "Strict",
+          path: "/",
+        });
       }
-      setDeviceId(id);
+      setVisitorId(id);
     };
 
-    setupDevice();
+    setupVisitor();
   }, []);
 
-  // Handle visibility change and Pusher setup
+  // Handle visibility change and cleanup
   useEffect(() => {
-    if (!deviceId) return;
+    if (!visitorId) return;
 
     let heartbeatInterval: NodeJS.Timeout | null = null;
 
+    // Function to handle visibility change
     const handleVisibilityChange = () => {
       const isVisible = document.visibilityState === "visible";
       updateOnlineStatus(isVisible);
 
+      // Clear existing heartbeat
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
         heartbeatInterval = null;
       }
 
+      // Set up new heartbeat if online
       if (isVisible) {
         heartbeatInterval = setInterval(() => {
           updateOnlineStatus(true);
@@ -118,7 +132,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       setLoading(false);
     });
 
-    // Initial online status
+    // Initial online status based on visibility
     const isInitiallyVisible = document.visibilityState === "visible";
     updateOnlineStatus(isInitiallyVisible);
 
@@ -128,12 +142,15 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       }, ONLINE_HEARTBEAT_INTERVAL);
     }
 
+    // Add visibility change listener
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
+    // Handle tab/window close
     window.addEventListener("beforeunload", () => {
       updateOnlineStatus(false);
     });
 
+    // Cleanup
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (heartbeatInterval) {
@@ -143,7 +160,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       channel.unbind_all();
       pusherClient.unsubscribe("visitors-channel");
     };
-  }, [deviceId, updateOnlineStatus]);
+  }, [visitorId, updateOnlineStatus]);
 
   return (
     <div
