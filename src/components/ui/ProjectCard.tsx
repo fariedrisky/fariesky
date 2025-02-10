@@ -4,6 +4,7 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Modal from "./Modal";
 import { ProjectModalContent } from "./ProjectModalContent";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
 
 function usePreloadImages(images: string[]) {
   useEffect(() => {
@@ -111,6 +112,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             buttonPrev: project.image.length <= 1 ? () => null : undefined,
             buttonNext: project.image.length <= 1 ? () => null : undefined,
           }}
+          plugins={[Zoom]}
         />
       </div>
 
