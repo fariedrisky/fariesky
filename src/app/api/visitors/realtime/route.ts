@@ -27,6 +27,26 @@ async function getCurrentMonthVisitors(): Promise<{
     };
 }
 
+// Fungsi untuk membersihkan data bulan sebelumnya
+async function cleanupPreviousMonth() {
+    const now = new Date();
+    // Jika tanggal 1, hapus data bulan sebelumnya
+    if (now.getDate() === 1) {
+        const prevMonth = new Date(now);
+        prevMonth.setMonth(now.getMonth() - 1);
+        const prevMonthKey = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, "0")}`;
+
+        try {
+            await Promise.all([
+                redis.del(`visitors:${prevMonthKey}`),
+                redis.del(`online:${prevMonthKey}`)
+            ]);
+        } catch (error) {
+            console.error('Error cleaning up previous month:', error);
+        }
+    }
+}
+
 // Fungsi untuk membersihkan data online yang tidak aktif
 async function cleanupStaleOnlineData() {
     const now = new Date();
@@ -34,7 +54,6 @@ async function cleanupStaleOnlineData() {
     const onlineKey = `online:${monthKey}`;
 
     try {
-        // Hapus key online jika masih ada
         await redis.del(onlineKey);
     } catch (error) {
         console.error('Error cleaning up stale data:', error);
@@ -57,18 +76,23 @@ export async function POST(request: NextRequest) {
         }
 
         const { status, isNewVisit } = body;
-
         const now = new Date();
         const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-        // If it's a new visit, add to monthly visitors
+        // Cleanup previous month data if it's the first day of the month
+        await cleanupPreviousMonth();
+
+        // Add to monthly visitors only if it's a new visit
         if (isNewVisit) {
             await redis.sadd(`visitors:${monthKey}`, visitorId);
+            // Set expiry for visitor key to end of current month
+            const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const secondsUntilMonthEnd = Math.floor((lastDayOfMonth.getTime() - now.getTime()) / 1000);
+            await redis.expire(`visitors:${monthKey}`, secondsUntilMonthEnd);
         }
 
         // Handle online status
         const onlineKey = `online:${monthKey}`;
-
         if (status === "online") {
             await redis.sadd(onlineKey, visitorId);
             // Set 30 second expiry for online status

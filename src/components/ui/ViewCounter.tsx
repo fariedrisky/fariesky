@@ -37,6 +37,11 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       if (!visitorId) return;
 
       try {
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const lastVisitMonth = Cookies.get(MONTHLY_VISIT_KEY);
+        const isNewVisit = !lastVisitMonth || lastVisitMonth !== currentMonth;
+
         const response = await fetch("/api/visitors/realtime", {
           method: "POST",
           headers: {
@@ -45,7 +50,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
           },
           body: JSON.stringify({
             status: isOnline ? "online" : "offline",
-            isNewVisit: !Cookies.get(MONTHLY_VISIT_KEY),
+            isNewVisit,
           }),
         });
 
@@ -58,6 +63,16 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
         if (result.data) {
           setData(result.data);
           setLoading(false);
+
+          // Update monthly visit cookie if it's a new visit
+          if (isNewVisit) {
+            Cookies.set(MONTHLY_VISIT_KEY, currentMonth, {
+              // Set cookie to expire at the end of the month
+              expires: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+              sameSite: "Strict",
+              path: "/",
+            });
+          }
         }
       } catch (error) {
         console.error("Error updating status:", error);
@@ -69,14 +84,9 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   // Initial setup
   useEffect(() => {
     const setupVisitor = () => {
-      const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      const lastVisitMonth = Cookies.get(MONTHLY_VISIT_KEY);
-      const isNewMonth = lastVisitMonth !== currentMonth;
-
-      // Get or create visitor ID
+      // Get or create visitor ID (persists for 1 year)
       let id = Cookies.get(VISITOR_ID_KEY);
-      if (!id || isNewMonth) {
+      if (!id) {
         id = uuidv4();
         Cookies.set(VISITOR_ID_KEY, id, {
           expires: 365,
@@ -84,16 +94,6 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
           path: "/",
         });
       }
-
-      // Update monthly visit tracking
-      if (isNewMonth) {
-        Cookies.set(MONTHLY_VISIT_KEY, currentMonth, {
-          expires: 30,
-          sameSite: "Strict",
-          path: "/",
-        });
-      }
-
       setVisitorId(id);
     };
 
