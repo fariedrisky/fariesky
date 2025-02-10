@@ -5,7 +5,6 @@ import { Eye, User } from "lucide-react";
 import { pusherClient } from "@/lib/pusher";
 import { v4 as uuidv4 } from "uuid";
 import Cookies from "js-cookie";
-import { getDeviceFingerprint } from "@/utils/fingerprint";
 
 interface ViewCounterProps {
   variant?: "mobile" | "tablet" | "desktop";
@@ -19,9 +18,8 @@ interface VisitorData {
 }
 
 const VISITOR_ID_KEY = "visitor_id";
-const DEVICE_FP_KEY = "device_fp";
 const MONTHLY_VISIT_KEY = "monthly_visit";
-const ONLINE_HEARTBEAT_INTERVAL = 20000;
+const ONLINE_HEARTBEAT_INTERVAL = 20000; // 20 seconds
 
 export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   const [data, setData] = useState<VisitorData>({
@@ -32,29 +30,23 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   });
   const [loading, setLoading] = useState(true);
   const [visitorId, setVisitorId] = useState<string>("");
-  const [deviceFingerprint, setDeviceFingerprint] = useState<string>("");
 
+  // Function to update online status
   const updateOnlineStatus = useCallback(
     async (isOnline: boolean) => {
-      if (!visitorId || !deviceFingerprint) return;
+      if (!visitorId) return;
 
       try {
         const now = new Date();
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
         const lastVisitMonth = Cookies.get(MONTHLY_VISIT_KEY);
-        const storedFingerprint = Cookies.get(DEVICE_FP_KEY);
-
-        const isNewVisit =
-          !lastVisitMonth ||
-          lastVisitMonth !== currentMonth ||
-          storedFingerprint !== deviceFingerprint;
+        const isNewVisit = !lastVisitMonth || lastVisitMonth !== currentMonth;
 
         const response = await fetch("/api/visitors/realtime", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "X-Visitor-ID": visitorId,
-            "X-Device-Fingerprint": deviceFingerprint,
           },
           body: JSON.stringify({
             status: isOnline ? "online" : "offline",
@@ -72,15 +64,11 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
           setData(result.data);
           setLoading(false);
 
+          // Update monthly visit cookie if it's a new visit
           if (isNewVisit) {
             Cookies.set(MONTHLY_VISIT_KEY, currentMonth, {
+              // Set cookie to expire at the end of the month
               expires: new Date(now.getFullYear(), now.getMonth() + 1, 0),
-              sameSite: "Strict",
-              path: "/",
-            });
-
-            Cookies.set(DEVICE_FP_KEY, deviceFingerprint, {
-              expires: 365,
               sameSite: "Strict",
               path: "/",
             });
@@ -90,12 +78,13 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
         console.error("Error updating status:", error);
       }
     },
-    [visitorId, deviceFingerprint],
+    [visitorId],
   );
 
   // Initial setup
   useEffect(() => {
     const setupVisitor = () => {
+      // Get or create visitor ID (persists for 1 year)
       let id = Cookies.get(VISITOR_ID_KEY);
       if (!id) {
         id = uuidv4();
@@ -106,29 +95,29 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
         });
       }
       setVisitorId(id);
-
-      const fp = getDeviceFingerprint();
-      setDeviceFingerprint(fp);
     };
 
     setupVisitor();
   }, []);
 
-  // Handle visibility change and Pusher setup
+  // Handle visibility change and cleanup
   useEffect(() => {
-    if (!visitorId || !deviceFingerprint) return;
+    if (!visitorId) return;
 
     let heartbeatInterval: NodeJS.Timeout | null = null;
 
+    // Function to handle visibility change
     const handleVisibilityChange = () => {
       const isVisible = document.visibilityState === "visible";
       updateOnlineStatus(isVisible);
 
+      // Clear existing heartbeat
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
         heartbeatInterval = null;
       }
 
+      // Set up new heartbeat if online
       if (isVisible) {
         heartbeatInterval = setInterval(() => {
           updateOnlineStatus(true);
@@ -143,7 +132,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       setLoading(false);
     });
 
-    // Initial online status
+    // Initial online status based on visibility
     const isInitiallyVisible = document.visibilityState === "visible";
     updateOnlineStatus(isInitiallyVisible);
 
@@ -153,12 +142,15 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       }, ONLINE_HEARTBEAT_INTERVAL);
     }
 
+    // Add visibility change listener
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
+    // Handle tab/window close
     window.addEventListener("beforeunload", () => {
       updateOnlineStatus(false);
     });
 
+    // Cleanup
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (heartbeatInterval) {
@@ -168,7 +160,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       channel.unbind_all();
       pusherClient.unsubscribe("visitors-channel");
     };
-  }, [visitorId, deviceFingerprint, updateOnlineStatus]);
+  }, [visitorId, updateOnlineStatus]);
 
   return (
     <div

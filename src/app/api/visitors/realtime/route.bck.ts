@@ -15,6 +15,7 @@ async function getCurrentMonthVisitors(): Promise<{
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
+    // Get monthly visitors and online count
     const [monthlyVisitors, onlineVisitors] = await Promise.all([
         redis.scard(`visitors:${monthKey}`),
         redis.scard(`online:${monthKey}`)
@@ -26,8 +27,10 @@ async function getCurrentMonthVisitors(): Promise<{
     };
 }
 
+// Fungsi untuk membersihkan data bulan sebelumnya
 async function cleanupPreviousMonth() {
     const now = new Date();
+    // Jika tanggal 1, hapus data bulan sebelumnya
     if (now.getDate() === 1) {
         const prevMonth = new Date(now);
         prevMonth.setMonth(now.getMonth() - 1);
@@ -36,8 +39,7 @@ async function cleanupPreviousMonth() {
         try {
             await Promise.all([
                 redis.del(`visitors:${prevMonthKey}`),
-                redis.del(`online:${prevMonthKey}`),
-                redis.del(`devices:${prevMonthKey}`)  // Also cleanup device tracking
+                redis.del(`online:${prevMonthKey}`)
             ]);
         } catch (error) {
             console.error('Error cleaning up previous month:', error);
@@ -45,16 +47,24 @@ async function cleanupPreviousMonth() {
     }
 }
 
+// Fungsi untuk membersihkan data online yang tidak aktif
+async function cleanupStaleOnlineData() {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const onlineKey = `online:${monthKey}`;
+
+    try {
+        await redis.del(onlineKey);
+    } catch (error) {
+        console.error('Error cleaning up stale data:', error);
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         const visitorId = request.headers.get("X-Visitor-ID");
-        const deviceFingerprint = request.headers.get("X-Device-Fingerprint");
-
-        if (!visitorId || !deviceFingerprint) {
-            return NextResponse.json(
-                { error: "Visitor ID and Device Fingerprint required" },
-                { status: 400 }
-            );
+        if (!visitorId) {
+            return NextResponse.json({ error: "Visitor ID required" }, { status: 400 });
         }
 
         let body;
@@ -69,35 +79,24 @@ export async function POST(request: NextRequest) {
         const now = new Date();
         const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-        // Cleanup previous month data
+        // Cleanup previous month data if it's the first day of the month
         await cleanupPreviousMonth();
 
-        // Check if this device has already been counted this month
-        const deviceKey = `devices:${monthKey}`;
-        const isNewDevice = !(await redis.sismember(deviceKey, deviceFingerprint));
-
-        // Add to monthly visitors only if it's both a new visit and a new device
-        if (isNewVisit && isNewDevice) {
-            await Promise.all([
-                redis.sadd(`visitors:${monthKey}`, visitorId),
-                redis.sadd(deviceKey, deviceFingerprint)
-            ]);
-
-            // Set expiry for both keys to end of current month
+        // Add to monthly visitors only if it's a new visit
+        if (isNewVisit) {
+            await redis.sadd(`visitors:${monthKey}`, visitorId);
+            // Set expiry for visitor key to end of current month
             const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             const secondsUntilMonthEnd = Math.floor((lastDayOfMonth.getTime() - now.getTime()) / 1000);
-
-            await Promise.all([
-                redis.expire(`visitors:${monthKey}`, secondsUntilMonthEnd),
-                redis.expire(deviceKey, secondsUntilMonthEnd)
-            ]);
+            await redis.expire(`visitors:${monthKey}`, secondsUntilMonthEnd);
         }
 
         // Handle online status
         const onlineKey = `online:${monthKey}`;
         if (status === "online") {
             await redis.sadd(onlineKey, visitorId);
-            await redis.expire(onlineKey, 30);  // 30-second expiry for online status
+            // Set 30 second expiry for online status
+            await redis.expire(onlineKey, 30);
         } else {
             await redis.srem(onlineKey, visitorId);
         }
@@ -122,4 +121,9 @@ export async function POST(request: NextRequest) {
             { status: 500 }
         );
     }
+}
+
+// Handle development cleanup
+if (process.env.NODE_ENV === 'development') {
+    cleanupStaleOnlineData();
 }
