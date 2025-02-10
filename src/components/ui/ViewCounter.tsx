@@ -1,4 +1,3 @@
-// components/ViewCounter.tsx
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -27,7 +26,6 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const mountedRef = useRef(false);
 
   useEffect(() => {
@@ -44,7 +42,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
     };
   }, []);
 
-  const updateStatus = useCallback(
+  const updateVisitorStatus = useCallback(
     async (status: "online" | "offline") => {
       if (!visitorId || !mountedRef.current) return;
       if (status === currentStatus) return;
@@ -86,17 +84,15 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
 
   const handleVisibilityChange = useCallback(() => {
     if (!mountedRef.current) return;
-
     const status =
       document.visibilityState === "visible" ? "online" : "offline";
-    updateStatus(status);
-  }, [updateStatus]);
+    updateVisitorStatus(status);
+  }, [updateVisitorStatus]);
 
   useEffect(() => {
     if (!visitorId) return;
 
     const channel = pusherClient.subscribe("visitors-channel");
-
     channel.bind("visitor-update", (newData: VisitorData) => {
       if (mountedRef.current) {
         setData(newData);
@@ -104,14 +100,11 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       }
     });
 
-    // Set initial status
     const initialStatus =
       document.visibilityState === "visible" ? "online" : "offline";
-    updateStatus(initialStatus);
+    updateVisitorStatus(initialStatus);
 
-    // Add event listeners
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
     setIsLoaded(true);
 
     return () => {
@@ -120,10 +113,10 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
 
       if (mountedRef.current) {
-        updateStatus("offline");
+        updateVisitorStatus("offline");
       }
     };
-  }, [visitorId, handleVisibilityChange, updateStatus]);
+  }, [visitorId, handleVisibilityChange, updateVisitorStatus]);
 
   if (!isLoaded) return null;
 
@@ -153,7 +146,9 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
                 <span className="animate-pulse text-neutral-400">...</span>
               ) : (
                 <span className="whitespace-nowrap text-neutral-600">
-                  {data.monthlyCount} View in {data.month} {data.year}
+                  {data.monthlyCount}{" "}
+                  {data.monthlyCount === 1 ? "View" : "Views"} in {data.month}{" "}
+                  {data.year}
                 </span>
               )}
             </div>
