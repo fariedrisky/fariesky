@@ -1,11 +1,13 @@
-// components/ResetVisitors.tsx
 "use client";
 
 import React, { useState } from "react";
 import { Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const ResetVisitors = () => {
   const [loading, setLoading] = useState(false);
+
+  const router = useRouter();
 
   const handleReset = async () => {
     if (
@@ -30,6 +32,7 @@ const ResetVisitors = () => {
       if (data.success) {
         alert("Visitor data has been reset successfully");
       }
+      router.push("/");
     } catch (error) {
       console.error("Error resetting data:", error);
       alert("Failed to reset visitor data");
@@ -39,7 +42,7 @@ const ResetVisitors = () => {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
       <button
         onClick={handleReset}
         disabled={loading}
