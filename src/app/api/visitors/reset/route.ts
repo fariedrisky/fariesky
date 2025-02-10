@@ -1,4 +1,3 @@
-// app/api/visitors/reset/route.ts
 import { NextResponse } from "next/server";
 import { Redis } from "@upstash/redis";
 import { pusherServer } from "@/lib/pusher";
@@ -10,34 +9,42 @@ const redis = new Redis({
 
 function getCurrentMonthKey(): string {
     const now = new Date();
-    return `visitors:${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
 export async function POST() {
     try {
         const monthKey = getCurrentMonthKey();
 
-        // Get all visitor IDs
-        const allVisitors = await redis.smembers(`${monthKey}:visitors`);
+        // Get all keys that need to be deleted
+        const keysToDelete = await Promise.all([
+            // Get all online visitors
+            redis.smembers(`online:${monthKey}`),
+            // Get all visitors
+            redis.smembers(`visitors:${monthKey}`)
+        ]);
 
-        // Delete all visitor details and related keys
+        const [onlineVisitors, allVisitors] = keysToDelete;
+
+        // Create pipeline for batch operations
         const pipeline = redis.pipeline();
 
-        // Delete individual visitor details
+        // Delete online visitors
+        for (const visitorId of onlineVisitors) {
+            pipeline.del(`visitor:${visitorId}`);
+        }
+
+        // Delete visitor records
         for (const visitorId of allVisitors) {
-            pipeline.del(`visitor:${visitorId}:details`);
+            pipeline.del(`visitor:${visitorId}`);
         }
 
-        // Delete the visitors set
-        pipeline.del(`${monthKey}:visitors`);
+        // Delete sets
+        pipeline.del(`online:${monthKey}`);
+        pipeline.del(`visitors:${monthKey}`);
 
-        // Execute all operations
+        // Execute all delete operations
         await pipeline.exec();
-
-        // Clear all members from the set (for safety)
-        if (allVisitors.length > 0) {
-            await redis.srem(`${monthKey}:visitors`, ...allVisitors);
-        }
 
         const newVisitorData = {
             monthlyCount: 0,

@@ -5,19 +5,19 @@ import { Eye, User } from "lucide-react";
 import { pusherClient } from "@/lib/pusher";
 import type { VisitorData } from "@/types/visitors";
 import { v4 as uuidv4 } from "uuid";
+import Cookies from "js-cookie";
 
 interface ViewCounterProps {
   variant?: "mobile" | "tablet" | "desktop";
 }
 
 const VISITOR_ID_KEY = "visitor_uuid";
+const MONTHLY_VISIT_KEY = "monthly_visit";
+const HEARTBEAT_INTERVAL = 30000; // 30 seconds
 
 export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [visitorId, setVisitorId] = useState<string>("");
-  const [currentStatus, setCurrentStatus] = useState<"online" | "offline">(
-    "offline",
-  );
   const [data, setData] = useState<VisitorData>({
     monthlyCount: 0,
     month: "",
@@ -26,30 +26,55 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const mountedRef = useRef(false);
+  const mountedRef = useRef<boolean>(false);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    let id = localStorage.getItem(VISITOR_ID_KEY);
-    if (!id) {
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    // Check if this is a new month
+    const lastVisitMonth = Cookies.get(MONTHLY_VISIT_KEY);
+    const isNewMonth = lastVisitMonth !== currentMonth;
+
+    // Get or create visitor ID
+    let id = Cookies.get(VISITOR_ID_KEY);
+    if (!id || isNewMonth) {
       id = uuidv4();
-      localStorage.setItem(VISITOR_ID_KEY, id);
+      Cookies.set(VISITOR_ID_KEY, id, {
+        expires: 30,
+        sameSite: "Strict",
+        path: "/",
+      });
     }
+
+    // Update monthly visit cookie
+    if (isNewMonth) {
+      Cookies.set(MONTHLY_VISIT_KEY, currentMonth, {
+        expires: 30,
+        sameSite: "Strict",
+        path: "/",
+      });
+    }
+
     setVisitorId(id);
     mountedRef.current = true;
 
     return () => {
       mountedRef.current = false;
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current);
+        heartbeatRef.current = null;
+      }
     };
   }, []);
 
   const updateVisitorStatus = useCallback(
     async (status: "online" | "offline") => {
       if (!visitorId || !mountedRef.current) return;
-      if (status === currentStatus) return;
 
       try {
         setError(null);
-        setCurrentStatus(status);
 
         const response = await fetch("/api/visitors/realtime", {
           method: "POST",
@@ -57,7 +82,10 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
             "Content-Type": "application/json",
             "X-Visitor-ID": visitorId,
           },
-          body: JSON.stringify({ status }),
+          body: JSON.stringify({
+            status,
+            isNewVisit: !Cookies.get(MONTHLY_VISIT_KEY),
+          }),
         });
 
         if (!response.ok) {
@@ -79,14 +107,26 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
         }
       }
     },
-    [visitorId, currentStatus],
+    [visitorId],
   );
 
   const handleVisibilityChange = useCallback(() => {
     if (!mountedRef.current) return;
+
     const status =
       document.visibilityState === "visible" ? "online" : "offline";
     updateVisitorStatus(status);
+
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
+
+    if (status === "online") {
+      heartbeatRef.current = setInterval(() => {
+        updateVisitorStatus("online");
+      }, HEARTBEAT_INTERVAL);
+    }
   }, [updateVisitorStatus]);
 
   useEffect(() => {
@@ -104,13 +144,28 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       document.visibilityState === "visible" ? "online" : "offline";
     updateVisitorStatus(initialStatus);
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    if (initialStatus === "online") {
+      heartbeatRef.current = setInterval(() => {
+        updateVisitorStatus("online");
+      }, HEARTBEAT_INTERVAL);
+    }
+
+    window.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", () => {
+      updateVisitorStatus("offline");
+    });
+
     setIsLoaded(true);
 
     return () => {
       channel.unbind_all();
       pusherClient.unsubscribe("visitors-channel");
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
+
+      if (heartbeatRef.current) {
+        clearInterval(heartbeatRef.current);
+        heartbeatRef.current = null;
+      }
 
       if (mountedRef.current) {
         updateVisitorStatus("offline");
