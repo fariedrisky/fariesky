@@ -17,36 +17,44 @@ export async function POST() {
     try {
         const monthKey = getCurrentMonthKey();
 
-        // Get all visitor IDs first
-        const allVisitors = await redis.smembers(monthKey);
+        // Get all visitor IDs
+        const allVisitors = await redis.smembers(`${monthKey}:visitors`);
 
-        // Create a pipeline for batch operations
+        // Delete all visitor details and related keys
         const pipeline = redis.pipeline();
 
-        // Delete all individual visitor details
+        // Delete individual visitor details
         for (const visitorId of allVisitors) {
             pipeline.del(`visitor:${visitorId}:details`);
         }
 
-        // Delete the monthly visitors set
-        pipeline.del(monthKey);
+        // Delete the visitors set
+        pipeline.del(`${monthKey}:visitors`);
 
-        // Execute all delete operations
+        // Execute all operations
         await pipeline.exec();
 
-        // Send update via Pusher to refresh all clients
-        await pusherServer.trigger('visitors-channel', 'visitor-update', {
+        // Clear all members from the set (for safety)
+        if (allVisitors.length > 0) {
+            await redis.srem(`${monthKey}:visitors`, ...allVisitors);
+        }
+
+        const newVisitorData = {
             monthlyCount: 0,
             month: new Date().toLocaleString("default", { month: "short" }),
             year: new Date().getFullYear(),
-            onlineCount: 0,
-            idleCount: 0
-        });
+            onlineCount: 0
+        };
+
+        // Trigger update to all clients
+        await pusherServer.trigger('visitors-channel', 'visitor-update', newVisitorData);
 
         return NextResponse.json({
             success: true,
-            message: "All visitor data has been reset successfully"
+            message: "All visitor data has been reset successfully",
+            data: newVisitorData
         });
+
     } catch (error) {
         console.error('Error resetting visitor data:', error);
         return NextResponse.json(

@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { Eye, Moon } from "lucide-react";
+import { Eye, User } from "lucide-react";
 import { pusherClient } from "@/lib/pusher";
 import type { VisitorData } from "@/types/visitors";
 import { v4 as uuidv4 } from "uuid";
@@ -12,30 +12,24 @@ interface ViewCounterProps {
 }
 
 const VISITOR_ID_KEY = "visitor_uuid";
-const LAST_STATUS_KEY = "last_visitor_status";
-const STATUS_UPDATE_DEBOUNCE = 200;
 
 export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [visitorId, setVisitorId] = useState<string>("");
-  const [currentStatus, setCurrentStatus] = useState<
-    "online" | "idle" | "offline"
-  >("offline");
+  const [currentStatus, setCurrentStatus] = useState<"online" | "offline">(
+    "offline",
+  );
   const [data, setData] = useState<VisitorData>({
     monthlyCount: 0,
     month: "",
     year: new Date().getFullYear(),
     onlineCount: 0,
-    idleCount: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Use refs instead of state for timeouts
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(false);
 
-  // Initialize visitor ID only once
   useEffect(() => {
     let id = localStorage.getItem(VISITOR_ID_KEY);
     if (!id) {
@@ -51,14 +45,13 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
   }, []);
 
   const updateStatus = useCallback(
-    async (status: "online" | "idle" | "offline") => {
+    async (status: "online" | "offline") => {
       if (!visitorId || !mountedRef.current) return;
       if (status === currentStatus) return;
 
       try {
         setError(null);
         setCurrentStatus(status);
-        localStorage.setItem(LAST_STATUS_KEY, status);
 
         const response = await fetch("/api/visitors/realtime", {
           method: "POST",
@@ -77,6 +70,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
         const result = await response.json();
         if (result.data && mountedRef.current) {
           setData(result.data);
+          setLoading(false);
         }
       } catch (error) {
         console.error("Error updating status:", error);
@@ -90,33 +84,14 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
     [visitorId, currentStatus],
   );
 
-  const debouncedStatusUpdate = useCallback(
-    (status: "online" | "idle" | "offline") => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-
-      debounceTimeoutRef.current = setTimeout(() => {
-        updateStatus(status);
-      }, STATUS_UPDATE_DEBOUNCE);
-    },
-    [updateStatus],
-  );
-
   const handleVisibilityChange = useCallback(() => {
     if (!mountedRef.current) return;
 
-    const isVisible = document.visibilityState === "visible";
-    const isFocused = document.hasFocus();
+    const status =
+      document.visibilityState === "visible" ? "online" : "offline";
+    updateStatus(status);
+  }, [updateStatus]);
 
-    if (isVisible && isFocused) {
-      debouncedStatusUpdate("online");
-    } else {
-      debouncedStatusUpdate("idle");
-    }
-  }, [debouncedStatusUpdate]);
-
-  // Setup Pusher and event listeners
   useEffect(() => {
     if (!visitorId) return;
 
@@ -129,120 +104,79 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       }
     });
 
-    // Initial status check
-    if (document.visibilityState === "visible" && document.hasFocus()) {
-      debouncedStatusUpdate("online");
-    } else {
-      debouncedStatusUpdate("idle");
-    }
+    // Set initial status
+    const initialStatus =
+      document.visibilityState === "visible" ? "online" : "offline";
+    updateStatus(initialStatus);
 
-    // Event listeners
+    // Add event listeners
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", () => debouncedStatusUpdate("online"));
-    window.addEventListener("blur", () => debouncedStatusUpdate("idle"));
 
     setIsLoaded(true);
 
-    // Cleanup
     return () => {
       channel.unbind_all();
       pusherClient.unsubscribe("visitors-channel");
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", () =>
-        debouncedStatusUpdate("online"),
-      );
-      window.removeEventListener("blur", () => debouncedStatusUpdate("idle"));
-
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
 
       if (mountedRef.current) {
         updateStatus("offline");
       }
     };
-  }, [visitorId, handleVisibilityChange, debouncedStatusUpdate, updateStatus]);
+  }, [visitorId, handleVisibilityChange, updateStatus]);
 
   if (!isLoaded) return null;
 
   return (
     <div
-      className={`fixed z-50 transition-all duration-300 ease-in-out ${
-        variant === "mobile" ? "bottom-3 right-3" : "bottom-4 right-4"
-      }`}
+      className={`fixed z-50 ${variant === "mobile" ? "bottom-3 right-3" : "bottom-4 right-4"}`}
     >
       <div
-        className={`border border-neutral-200/50 bg-white/90 shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out hover:bg-white ${
-          variant === "mobile"
-            ? "rounded-lg px-2.5 py-1.5"
-            : "rounded-full px-4 py-2"
+        className={`group flex items-center gap-2.5 rounded-full bg-white/95 px-3 py-1.5 shadow-lg backdrop-blur-sm transition-all duration-300 hover:bg-white ${
+          variant === "mobile" ? "text-xs" : "text-sm"
         }`}
       >
         {error ? (
-          <div className="text-xs text-red-500">Error loading data</div>
+          <div className="flex items-center gap-1.5 text-xs text-red-500">
+            <div className="h-1 w-1 rounded-full bg-red-500" />
+            Error
+          </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <div
-              className={`flex items-center gap-1.5 text-neutral-600 ${
-                variant === "mobile" ? "text-xs" : "text-sm"
-              }`}
-            >
+          <>
+            <div className="flex items-center gap-1.5">
               <Eye
-                size={variant === "mobile" ? 14 : 16}
-                className="text-neutral-500"
+                size={variant === "mobile" ? 13 : 14}
+                className="text-neutral-400"
+                strokeWidth={2}
               />
               {loading ? (
-                <span className="animate-pulse">...</span>
+                <span className="animate-pulse text-neutral-400">...</span>
               ) : (
-                <span className="font-medium">
-                  {data.monthlyCount.toLocaleString()}
+                <span className="whitespace-nowrap text-neutral-600">
+                  {data.monthlyCount} View in {data.month} {data.year}
                 </span>
               )}
             </div>
-            <div
-              className={`border-l border-neutral-200 pl-2 text-neutral-400 ${
-                variant === "mobile" ? "text-[10px]" : "text-xs"
-              }`}
-            >
-              {loading ? (
-                <span className="animate-pulse">...</span>
-              ) : (
-                `${data.month} ${data.year}`
-              )}
-            </div>
-            <div className="flex items-center gap-1.5 border-l border-neutral-200 pl-2">
-              <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
-              <span
-                className={`text-neutral-400 ${
-                  variant === "mobile" ? "text-[10px]" : "text-xs"
-                }`}
-              >
+            <div className="h-3 w-[1px] bg-neutral-200" />
+            <div className="flex items-center gap-1.5">
+              <div className="relative h-1.5 w-1.5">
+                <div className="absolute inset-0 animate-ping rounded-full bg-green-500/30" />
+                <div className="relative h-1.5 w-1.5 rounded-full bg-green-500" />
+              </div>
+              <User
+                size={variant === "mobile" ? 12 : 13}
+                className="text-neutral-400"
+                strokeWidth={2}
+              />
+              <span className="text-neutral-500">
                 {loading ? (
                   <span className="animate-pulse">...</span>
                 ) : (
                   data.onlineCount
                 )}
               </span>
-              <div className="ml-2 border-l border-neutral-200" />
-              <div className="flex items-center gap-1.5 pl-2">
-                <Moon
-                  size={variant === "mobile" ? 12 : 14}
-                  className="text-yellow-400"
-                />
-                <span
-                  className={`text-neutral-400 ${
-                    variant === "mobile" ? "text-[10px]" : "text-xs"
-                  }`}
-                >
-                  {loading ? (
-                    <span className="animate-pulse">...</span>
-                  ) : (
-                    data.idleCount
-                  )}
-                </span>
-              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>

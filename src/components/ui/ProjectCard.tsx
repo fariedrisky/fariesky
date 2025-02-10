@@ -89,7 +89,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
                 currentImageIndex === index ? "opacity-100" : "opacity-0"
               }`}
               sizes="280px"
-              priority={index === 0}
+              priority={index === 1}
             />
           ))}
         </div>

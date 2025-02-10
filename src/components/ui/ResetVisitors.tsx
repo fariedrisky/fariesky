@@ -1,9 +1,9 @@
 // components/ResetVisitors.tsx
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 
-export default function ResetVisitors() {
+const ResetVisitors = () => {
   const [loading, setLoading] = useState(false);
 
   const handleReset = async () => {
@@ -14,11 +14,16 @@ export default function ResetVisitors() {
       const res = await fetch("/api/visitors/reset", {
         method: "POST",
       });
+
+      if (!res.ok) {
+        throw new Error("Failed to reset visitor data");
+      }
+
       const data = await res.json();
 
       if (data.success) {
         alert("Visitor data has been reset successfully");
-        window.location.reload();
+        // No need to reload the page as Pusher will update the UI
       }
     } catch (error) {
       console.error("Error resetting data:", error);
@@ -29,12 +34,16 @@ export default function ResetVisitors() {
   };
 
   return (
-    <button
-      onClick={handleReset}
-      disabled={loading}
-      className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600 disabled:opacity-50"
-    >
-      {loading ? "Resetting..." : "Reset Visitor Data"}
-    </button>
+    <div className="fixed bottom-4 left-4 z-50">
+      <button
+        onClick={handleReset}
+        disabled={loading}
+        className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-lg transition-all duration-200 hover:bg-gray-50 disabled:opacity-50"
+      >
+        {loading ? "Resetting..." : "Reset Visitor Data"}
+      </button>
+    </div>
   );
-}
+};
+
+export default ResetVisitors;

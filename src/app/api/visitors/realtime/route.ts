@@ -9,13 +9,12 @@ const redis = new Redis({
     token: process.env.KV_REST_API_TOKEN || '',
 });
 
-const IDLE_TIMEOUT = 30 * 1000; // 30 seconds timeout for idle
 const OFFLINE_TIMEOUT = 60 * 1000; // 1 minute timeout for offline cleanup
 
 interface VisitorDetails {
     id: string;
     lastSeen: string;
-    status: 'online' | 'idle' | 'offline';
+    status: 'online' | 'offline';
 }
 
 interface VisitorData {
@@ -23,12 +22,16 @@ interface VisitorData {
     month: string;
     year: number;
     onlineCount: number;
-    idleCount: number;
 }
 
 function getCurrentMonthKey(): string {
     const now = new Date();
     return `visitors:${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getUniqueVisitorsKey(): string {
+    const now = new Date();
+    return `unique_visitors:${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
 async function getVisitorDetails(id: string): Promise<VisitorDetails | null> {
@@ -53,7 +56,7 @@ async function cleanupInactiveVisitors(): Promise<void> {
     const now = new Date();
 
     try {
-        const allVisitors = await redis.smembers(`${monthKey}:visitors`);
+        const allVisitors = await redis.smembers(monthKey);
         for (const visitorId of allVisitors) {
             const details = await getVisitorDetails(visitorId);
             if (!details) continue;
@@ -61,44 +64,56 @@ async function cleanupInactiveVisitors(): Promise<void> {
             const lastSeenTime = new Date(details.lastSeen).getTime();
             const timeDiff = now.getTime() - lastSeenTime;
 
-            if (details.status === 'idle' && timeDiff > IDLE_TIMEOUT) {
-                await updateVisitorStatus(visitorId, 'offline');
-            } else if (details.status === 'online' && timeDiff > IDLE_TIMEOUT) {
-                await updateVisitorStatus(visitorId, 'idle');
-            } else if (timeDiff > OFFLINE_TIMEOUT) {
+            if (timeDiff > OFFLINE_TIMEOUT) {
                 await redis.del(`visitor:${visitorId}:details`);
-                await redis.srem(`${monthKey}:visitors`, visitorId);
+                await redis.srem(monthKey, visitorId);
             }
+        }
+
+        // Check if it's the first day of a new month
+        if (now.getDate() === 1 && now.getHours() === 0) {
+            const lastMonthDate = new Date(now);
+            lastMonthDate.setMonth(now.getMonth() - 1);
+            const lastMonthKey = `visitors:${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+            const lastMonthUniqueKey = `unique_visitors:${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+            // Clear last month's data
+            const lastMonthVisitors = await redis.smembers(lastMonthKey);
+            for (const visitorId of lastMonthVisitors) {
+                await redis.del(`visitor:${visitorId}:details`);
+            }
+            await redis.del(lastMonthKey);
+            await redis.del(lastMonthUniqueKey);
         }
     } catch (error) {
         console.error("Error during cleanup:", error);
-        // Ignore cleanup errors
     }
 }
 
 async function getVisitorData(): Promise<VisitorData> {
     const now = new Date();
     const monthKey = getCurrentMonthKey();
+    const uniqueKey = getUniqueVisitorsKey();
 
     try {
-        const monthlyVisitors = await redis.smembers(`${monthKey}:visitors`);
+        // Get online users
+        const onlineVisitors = await redis.smembers(monthKey);
         const visitorDetails = await Promise.all(
-            monthlyVisitors.map(id => getVisitorDetails(id))
+            onlineVisitors.map(id => getVisitorDetails(id))
         );
 
         const validVisitors = visitorDetails.filter((v): v is VisitorDetails =>
-            v !== null && v.status !== 'offline'
+            v !== null && v.status === 'online'
         );
 
-        const onlineCount = validVisitors.filter(v => v.status === 'online').length;
-        const idleCount = validVisitors.filter(v => v.status === 'idle').length;
+        // Get total unique visitors for the month
+        const uniqueVisitors = await redis.scard(uniqueKey);
 
         return {
-            monthlyCount: monthlyVisitors.length,
+            monthlyCount: uniqueVisitors,
             month: now.toLocaleString("default", { month: "short" }),
             year: now.getFullYear(),
-            onlineCount,
-            idleCount
+            onlineCount: validVisitors.length,
         };
     } catch (error) {
         console.error('Error getting visitor data:', error);
@@ -107,17 +122,17 @@ async function getVisitorData(): Promise<VisitorData> {
             month: now.toLocaleString("default", { month: "short" }),
             year: now.getFullYear(),
             onlineCount: 0,
-            idleCount: 0
         };
     }
 }
 
 async function updateVisitorStatus(
     visitorId: string,
-    status: 'online' | 'idle' | 'offline'
+    status: 'online' | 'offline'
 ): Promise<void> {
     try {
         const monthKey = getCurrentMonthKey();
+        const uniqueKey = getUniqueVisitorsKey();
         const currentDetails = await getVisitorDetails(visitorId);
         const now = new Date();
 
@@ -131,12 +146,15 @@ async function updateVisitorStatus(
             status
         };
 
+        // Always add to unique visitors set when updating status
+        await redis.sadd(uniqueKey, visitorId);
+
         if (status === 'offline') {
             await redis.del(`visitor:${visitorId}:details`);
-            await redis.srem(`${monthKey}:visitors`, visitorId);
+            await redis.srem(monthKey, visitorId);
         } else {
             await redis.set(`visitor:${visitorId}:details`, JSON.stringify(visitorDetails));
-            await redis.sadd(`${monthKey}:visitors`, visitorId);
+            await redis.sadd(monthKey, visitorId);
         }
     } catch (error) {
         throw error;
