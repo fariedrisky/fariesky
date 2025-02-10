@@ -36,8 +36,7 @@ async function cleanupPreviousMonth() {
         try {
             await Promise.all([
                 redis.del(`visitors:${prevMonthKey}`),
-                redis.del(`online:${prevMonthKey}`),
-                redis.del(`devices:${prevMonthKey}`)  // Also cleanup device tracking
+                redis.del(`online:${prevMonthKey}`)
             ]);
         } catch (error) {
             console.error('Error cleaning up previous month:', error);
@@ -47,12 +46,10 @@ async function cleanupPreviousMonth() {
 
 export async function POST(request: NextRequest) {
     try {
-        const visitorId = request.headers.get("X-Visitor-ID");
-        const deviceFingerprint = request.headers.get("X-Device-Fingerprint");
-
-        if (!visitorId || !deviceFingerprint) {
+        const deviceId = request.headers.get("X-Device-ID");
+        if (!deviceId) {
             return NextResponse.json(
-                { error: "Visitor ID and Device Fingerprint required" },
+                { error: "Device ID required" },
                 { status: 400 }
             );
         }
@@ -72,34 +69,23 @@ export async function POST(request: NextRequest) {
         // Cleanup previous month data
         await cleanupPreviousMonth();
 
-        // Check if this device has already been counted this month
-        const deviceKey = `devices:${monthKey}`;
-        const isNewDevice = !(await redis.sismember(deviceKey, deviceFingerprint));
+        // Add to monthly visitors only if it's a new visit
+        if (isNewVisit) {
+            await redis.sadd(`visitors:${monthKey}`, deviceId);
 
-        // Add to monthly visitors only if it's both a new visit and a new device
-        if (isNewVisit && isNewDevice) {
-            await Promise.all([
-                redis.sadd(`visitors:${monthKey}`, visitorId),
-                redis.sadd(deviceKey, deviceFingerprint)
-            ]);
-
-            // Set expiry for both keys to end of current month
+            // Set expiry for the month
             const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             const secondsUntilMonthEnd = Math.floor((lastDayOfMonth.getTime() - now.getTime()) / 1000);
-
-            await Promise.all([
-                redis.expire(`visitors:${monthKey}`, secondsUntilMonthEnd),
-                redis.expire(deviceKey, secondsUntilMonthEnd)
-            ]);
+            await redis.expire(`visitors:${monthKey}`, secondsUntilMonthEnd);
         }
 
         // Handle online status
         const onlineKey = `online:${monthKey}`;
         if (status === "online") {
-            await redis.sadd(onlineKey, visitorId);
+            await redis.sadd(onlineKey, deviceId);
             await redis.expire(onlineKey, 30);  // 30-second expiry for online status
         } else {
-            await redis.srem(onlineKey, visitorId);
+            await redis.srem(onlineKey, deviceId);
         }
 
         // Get updated counts

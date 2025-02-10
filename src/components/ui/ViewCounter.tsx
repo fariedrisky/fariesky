@@ -4,8 +4,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Eye, User } from "lucide-react";
 import { pusherClient } from "@/lib/pusher";
 import { v4 as uuidv4 } from "uuid";
-import Cookies from "js-cookie";
-import { getDeviceFingerprint } from "@/utils/fingerprint";
 
 interface ViewCounterProps {
   variant?: "mobile" | "tablet" | "desktop";
@@ -18,8 +16,7 @@ interface VisitorData {
   onlineCount: number;
 }
 
-const VISITOR_ID_KEY = "visitor_id";
-const DEVICE_FP_KEY = "device_fp";
+const DEVICE_ID_KEY = "device_id";
 const MONTHLY_VISIT_KEY = "monthly_visit";
 const ONLINE_HEARTBEAT_INTERVAL = 20000;
 
@@ -31,30 +28,25 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
     onlineCount: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [visitorId, setVisitorId] = useState<string>("");
-  const [deviceFingerprint, setDeviceFingerprint] = useState<string>("");
+  const [deviceId, setDeviceId] = useState<string>("");
 
   const updateOnlineStatus = useCallback(
     async (isOnline: boolean) => {
-      if (!visitorId || !deviceFingerprint) return;
+      if (!deviceId) return;
 
       try {
         const now = new Date();
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const lastVisitMonth = Cookies.get(MONTHLY_VISIT_KEY);
-        const storedFingerprint = Cookies.get(DEVICE_FP_KEY);
+        const lastVisitMonth = localStorage.getItem(MONTHLY_VISIT_KEY);
 
-        const isNewVisit =
-          !lastVisitMonth ||
-          lastVisitMonth !== currentMonth ||
-          storedFingerprint !== deviceFingerprint;
+        // Consider it a new visit only if this is first visit this month
+        const isNewVisit = !lastVisitMonth || lastVisitMonth !== currentMonth;
 
         const response = await fetch("/api/visitors/realtime", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Visitor-ID": visitorId,
-            "X-Device-Fingerprint": deviceFingerprint,
+            "X-Device-ID": deviceId,
           },
           body: JSON.stringify({
             status: isOnline ? "online" : "offline",
@@ -73,54 +65,33 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
           setLoading(false);
 
           if (isNewVisit) {
-            Cookies.set(MONTHLY_VISIT_KEY, currentMonth, {
-              expires: new Date(now.getFullYear(), now.getMonth() + 1, 0),
-              sameSite: "Strict",
-              path: "/",
-            });
-
-            Cookies.set(DEVICE_FP_KEY, deviceFingerprint, {
-              expires: 365,
-              sameSite: "Strict",
-              path: "/",
-            });
+            localStorage.setItem(MONTHLY_VISIT_KEY, currentMonth);
           }
         }
       } catch (error) {
         console.error("Error updating status:", error);
       }
     },
-    [visitorId, deviceFingerprint],
+    [deviceId],
   );
 
-  // Initial setup
   useEffect(() => {
-    const setupVisitor = async () => {
-      let id = Cookies.get(VISITOR_ID_KEY);
+    const setupDevice = () => {
+      // Get or create device ID from localStorage
+      let id = localStorage.getItem(DEVICE_ID_KEY);
       if (!id) {
         id = uuidv4();
-        Cookies.set(VISITOR_ID_KEY, id, {
-          expires: 365,
-          sameSite: "Strict",
-          path: "/",
-        });
+        localStorage.setItem(DEVICE_ID_KEY, id);
       }
-      setVisitorId(id);
-
-      try {
-        const fp = await getDeviceFingerprint();
-        setDeviceFingerprint(fp);
-      } catch (error) {
-        console.error("Error generating fingerprint:", error);
-      }
+      setDeviceId(id);
     };
 
-    setupVisitor();
+    setupDevice();
   }, []);
 
   // Handle visibility change and Pusher setup
   useEffect(() => {
-    if (!visitorId || !deviceFingerprint) return;
+    if (!deviceId) return;
 
     let heartbeatInterval: NodeJS.Timeout | null = null;
 
@@ -172,7 +143,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       channel.unbind_all();
       pusherClient.unsubscribe("visitors-channel");
     };
-  }, [visitorId, deviceFingerprint, updateOnlineStatus]);
+  }, [deviceId, updateOnlineStatus]);
 
   return (
     <div
