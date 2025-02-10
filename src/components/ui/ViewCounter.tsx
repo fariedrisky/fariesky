@@ -95,7 +95,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
 
   // Initial setup
   useEffect(() => {
-    const setupVisitor = () => {
+    const setupVisitor = async () => {
       let id = Cookies.get(VISITOR_ID_KEY);
       if (!id) {
         id = uuidv4();
@@ -107,8 +107,12 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       }
       setVisitorId(id);
 
-      const fp = getDeviceFingerprint();
-      setDeviceFingerprint(fp);
+      try {
+        const fp = await getDeviceFingerprint();
+        setDeviceFingerprint(fp);
+      } catch (error) {
+        console.error("Error generating fingerprint:", error);
+      }
     };
 
     setupVisitor();
