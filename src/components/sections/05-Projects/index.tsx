@@ -8,6 +8,7 @@ import ProjectCard from "@/components/ui/ProjectCard";
 // Constants
 const CARD_WIDTH = 280;
 const SCROLL_MULTIPLIER = 2;
+const TOUCH_SLOP = 5; // Minimum pixel movement to determine scroll direction
 
 interface ScrollProps {
   direction: "left" | "right";
@@ -18,10 +19,13 @@ export default function Projects() {
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const [isHorizontalScroll, setIsHorizontalScroll] = useState<boolean | null>(
+    null,
+  );
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Memoized scroll checker
   const checkScroll = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -32,7 +36,6 @@ export default function Projects() {
     );
   }, []);
 
-  // Add resize listener to update scroll buttons
   useEffect(() => {
     const handleResize = () => checkScroll();
     window.addEventListener("resize", handleResize);
@@ -50,49 +53,69 @@ export default function Projects() {
     });
   }, []);
 
-  const handleDragStart = useCallback((pointX: number) => {
+  const handleDragStart = useCallback((pointX: number, pointY: number) => {
     const container = containerRef.current;
     if (!container) return;
 
     setIsDragging(true);
     setStartX(pointX - container.offsetLeft);
+    setStartY(pointY);
     setScrollLeft(container.scrollLeft);
+    setIsHorizontalScroll(null);
   }, []);
 
   const handleDragMove = useCallback(
-    (pointX: number) => {
+    (pointX: number, pointY: number) => {
       if (!isDragging) return;
 
       const container = containerRef.current;
       if (!container) return;
 
-      const x = pointX - container.offsetLeft;
-      const walk = (x - startX) * SCROLL_MULTIPLIER;
-      container.scrollLeft = scrollLeft - walk;
+      const deltaX = Math.abs(pointX - container.offsetLeft - startX);
+      const deltaY = Math.abs(pointY - startY);
+
+      // Determine scroll direction if not yet determined
+      if (
+        isHorizontalScroll === null &&
+        (deltaX > TOUCH_SLOP || deltaY > TOUCH_SLOP)
+      ) {
+        const isHorizontal = deltaX > deltaY;
+        setIsHorizontalScroll(isHorizontal);
+      }
+
+      // Only handle horizontal scrolling
+      if (isHorizontalScroll) {
+        const x = pointX - container.offsetLeft;
+        const walk = (x - startX) * SCROLL_MULTIPLIER;
+        container.scrollLeft = scrollLeft - walk;
+      }
     },
-    [isDragging, startX, scrollLeft],
+    [isDragging, startX, startY, scrollLeft, isHorizontalScroll],
   );
 
   const handleDragEnd = useCallback(() => {
     setIsDragging(false);
+    setIsHorizontalScroll(null);
   }, []);
 
-  // Event handlers with proper typing
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    handleDragStart(e.pageX);
+    handleDragStart(e.pageX, e.pageY);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
-    handleDragMove(e.pageX);
+    handleDragMove(e.pageX, e.pageY);
   };
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    handleDragStart(e.touches[0].pageX);
+    handleDragStart(e.touches[0].pageX, e.touches[0].pageY);
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    handleDragMove(e.touches[0].pageX);
+    if (isHorizontalScroll) {
+      e.preventDefault(); // Prevent vertical scrolling only when horizontal scrolling is detected
+    }
+    handleDragMove(e.touches[0].pageX, e.touches[0].pageY);
   };
 
   return (
