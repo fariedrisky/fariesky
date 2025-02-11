@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { experience } from "./data";
 import Title from "@/components/ui/Title";
-import { X, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 
 const bgColors = [
@@ -99,15 +99,12 @@ export default function Experience() {
                           {experience.period}
                         </span>
                         <div className="flex h-6 w-6 items-center justify-center">
-                          <div
-                            className={`transform transition-transform duration-300 ${expandedIndex === index ? "rotate-180" : ""}`}
-                          >
-                            {expandedIndex === index ? (
-                              <X size={20} />
-                            ) : (
-                              <ChevronDown size={20} />
-                            )}
-                          </div>
+                          <ChevronDown
+                            size={20}
+                            className={`transform transition-transform duration-300 ${
+                              expandedIndex === index ? "rotate-180" : ""
+                            }`}
+                          />
                         </div>
                       </div>
                       <div className="mr-10 flex items-center gap-1 text-xs text-gray-500 sm:text-sm">
@@ -117,15 +114,12 @@ export default function Experience() {
                   </div>
                   <div className="absolute right-4 top-4">
                     <div className="flex h-6 w-6 items-center justify-center sm:hidden">
-                      <div
-                        className={`transform transition-transform duration-300 ${expandedIndex === index ? "rotate-180" : ""}`}
-                      >
-                        {expandedIndex === index ? (
-                          <X size={20} />
-                        ) : (
-                          <ChevronDown size={20} />
-                        )}
-                      </div>
+                      <ChevronDown
+                        size={20}
+                        className={`transform transition-transform duration-300 ${
+                          expandedIndex === index ? "rotate-180" : ""
+                        }`}
+                      />
                     </div>
                   </div>
                 </CardContent>

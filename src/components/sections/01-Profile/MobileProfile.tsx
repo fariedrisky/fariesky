@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
 import Image from "next/image";
-import { MapPin, Phone, Mail, X, ChevronDown } from "lucide-react";
+import { MapPin, Phone, Mail, ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profile } from "./data";
@@ -76,17 +76,12 @@ export default function MobileProfile({ onContactClick }: MobileProfileProps) {
 
           <div className="absolute right-4 top-4">
             <div className="flex h-6 w-6 items-center justify-center">
-              <div
+              <ChevronDown
+                size={20}
                 className={`transform transition-transform duration-300 ${
                   expandedIndex === 0 ? "rotate-180" : ""
                 }`}
-              >
-                {expandedIndex === 0 ? (
-                  <X size={20} />
-                ) : (
-                  <ChevronDown size={20} />
-                )}
-              </div>
+              />
             </div>
           </div>
         </CardContent>

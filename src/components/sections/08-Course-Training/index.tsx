@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { course } from "./data";
 import Title from "@/components/ui/Title";
-import { X, ChevronDown, ExternalLink } from "lucide-react";
+import {  ChevronDown, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -98,17 +98,12 @@ export default function Course() {
                         {course.period}
                       </span>
                       <div className="flex h-6 w-6 items-center justify-center">
-                        <div
+                        <ChevronDown
+                          size={20}
                           className={`transform transition-transform duration-300 ${
                             expandedIndex === index ? "rotate-180" : ""
                           }`}
-                        >
-                          {expandedIndex === index ? (
-                            <X size={20} />
-                          ) : (
-                            <ChevronDown size={20} />
-                          )}
-                        </div>
+                        />
                       </div>
                     </div>
                     <div className="mr-10 flex items-center gap-1 text-sm text-gray-500">
@@ -118,17 +113,12 @@ export default function Course() {
                 </div>
                 <div className="absolute right-4 top-4">
                   <div className="flex h-6 w-6 items-center justify-center sm:hidden">
-                    <div
+                    <ChevronDown
+                      size={20}
                       className={`transform transition-transform duration-300 ${
                         expandedIndex === index ? "rotate-180" : ""
                       }`}
-                    >
-                      {expandedIndex === index ? (
-                        <X size={20} />
-                      ) : (
-                        <ChevronDown size={20} />
-                      )}
-                    </div>
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -160,7 +150,10 @@ export default function Course() {
                   </ul>
                   {course.certificateUrl && (
                     <div className="mt-4 flex items-center gap-2">
-                      <Button variant="outline" className="w-full !rounded-[14px] hover:!bg-neutral-50 shadow-none sm:w-auto">
+                      <Button
+                        variant="outline"
+                        className="w-full !rounded-[14px] shadow-none hover:!bg-neutral-50 sm:w-auto"
+                      >
                         <Link
                           href={course.certificateUrl}
                           target="_blank"
