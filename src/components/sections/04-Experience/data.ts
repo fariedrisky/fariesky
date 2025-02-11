@@ -9,9 +9,9 @@ export const experience: ExperienceData = {
             period: "Nov 2024 - Present",
             location: "Banda Aceh, Indonesia",
             description: [
-                "Integrate APIs into the CMD user interface to ensure seamless data flow and interaction",
-                "Develop and implement new frontend features for CMD to enhance functionality",
-                "Adapt the existing CMD user interface for migration to the new tech stack"
+                "Integrate APIs into the CMD user interface to ensure seamless data flow and interaction.",
+                "Develop and implement new frontend features for CMD to enhance functionality.",
+                "Adapt the existing CMD user interface for migration to the new tech stack."
             ],
             logo: "/assets/images/logo/experience/kensengrik.png",
         },
@@ -59,10 +59,10 @@ export const experience: ExperienceData = {
             period: "Jul 2021 - Aug 2021",
             location: "Banda Aceh, Indonesia",
             description: [
-                "Collect and integrate geographic data using GIS tools for analysis",
-                "Create detailed maps with GIS software to highlight spatial patterns",
-                "Analyze data to provide actionable insights for informed decision-making",
-                "Support teams in urban planning and environmental studies with spatial analysis"
+                "Collect and integrate geographic data using GIS tools for analysis.",
+                "Create detailed maps with GIS software to highlight spatial patterns.",
+                "Analyze data to provide actionable insights for informed decision-making.",
+                "Support teams in urban planning and environmental studies with spatial analysis."
             ],
             logo: "/assets/images/logo/experience/dinasaceh.png",
         },

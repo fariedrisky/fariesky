@@ -3,13 +3,14 @@ import { ProfileData } from "@/components/sections/01-Profile/types";
 import { links } from "@/components/sections/10-Links/data";
 import { styles } from "../../02-CVStyles";
 
-interface ProfileSectionProps {
+interface HeaderSectionProps {
   profile: ProfileData;
 }
 
-export default function ProfileSection({ profile }: ProfileSectionProps) {
+export default function HeaderSection({ profile }: HeaderSectionProps) {
   const linkedInUrl =
     links.links.find((link) => link.title === "LinkedIn")?.url || "";
+  const websiteUrl = "fariesky.vercel.app";
 
   return (
     <View style={styles.header}>
@@ -20,9 +21,13 @@ export default function ProfileSection({ profile }: ProfileSectionProps) {
           {profile.email}
         </Link>{" "}
         |{" "}
+        <Link src={`https://${websiteUrl}`} style={styles.link}>
+          {websiteUrl}
+        </Link>
+        |{" "}
         <Link src={linkedInUrl} style={styles.link}>
           {linkedInUrl.replace("http://", "").replace("www.", "")}
-        </Link>
+        </Link>{" "}
       </Text>
     </View>
   );

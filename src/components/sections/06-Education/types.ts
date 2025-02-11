@@ -9,5 +9,6 @@ export interface Education {
     period: string;
     location: string; // Added location field
     score?: string;
+    description?: string[];
     logo: string;
 }
