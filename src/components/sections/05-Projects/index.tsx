@@ -114,7 +114,7 @@ export default function Projects() {
     <section className="w-full">
       <Title>{projectsData.title}</Title>
 
-      <div className="relative mt-8">
+      <div className="relative">
         <div
           ref={containerRef}
           className="flex select-none gap-6 overflow-x-hidden scroll-smooth px-2 py-4"
