@@ -3,10 +3,10 @@ import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/Button";
 import { Loader2 } from "lucide-react";
 
-const PDFDownloadButton = dynamic(
+const OpenPDFButton = dynamic(
   () =>
-    import("@/components/cv/03-DownloadCV/PDFDownloadButton").then((mod) => ({
-      default: mod.PDFDownloadButton,
+    import("@/components/cv/03-CVButton/OpenPDFButton").then((mod) => ({
+      default: mod.OpenPDFButton,
     })),
   {
     ssr: false,
@@ -18,6 +18,6 @@ const PDFDownloadButton = dynamic(
   },
 );
 
-export default function DownloadCV() {
-  return <PDFDownloadButton />;
+export default function ViewCV() {
+  return <OpenPDFButton />;
 }

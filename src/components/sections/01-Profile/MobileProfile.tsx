@@ -5,7 +5,7 @@ import { MapPin, Phone, Mail, X, ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { profile } from "./data";
-import DownloadCV from "@/components/cv/03-DownloadCV";
+import CVButton from "@/components/cv/03-CVButton";
 
 interface MobileProfileProps {
   onContactClick: () => void;
@@ -13,7 +13,7 @@ interface MobileProfileProps {
 
 export default function MobileProfile({ onContactClick }: MobileProfileProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-  const pdfButton = useMemo(() => <DownloadCV />, []);
+  const pdfButton = useMemo(() => <CVButton />, []);
 
   return (
     <Card className="w-full bg-white !p-0">
