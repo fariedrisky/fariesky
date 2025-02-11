@@ -41,6 +41,64 @@ export default function Projects() {
     return () => window.removeEventListener("resize", handleResize);
   }, [checkScroll]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const touchStartHandler = (e: TouchEvent) => {
+      setIsDragging(true);
+      setStartX(e.touches[0].pageX - container.offsetLeft);
+      setStartY(e.touches[0].pageY);
+      setScrollLeft(container.scrollLeft);
+      isHorizontalRef.current = false;
+      initialTouchRef.current = true;
+    };
+
+    const touchMoveHandler = (e: TouchEvent) => {
+      if (!isDragging) return;
+
+      const pointX = e.touches[0].pageX;
+      const pointY = e.touches[0].pageY;
+      const deltaX = Math.abs(pointX - container.offsetLeft - startX);
+      const deltaY = Math.abs(pointY - startY);
+
+      if (
+        initialTouchRef.current &&
+        (deltaX > TOUCH_SLOP || deltaY > TOUCH_SLOP)
+      ) {
+        initialTouchRef.current = false;
+        isHorizontalRef.current = deltaX > deltaY;
+      }
+
+      if (isHorizontalRef.current) {
+        e.preventDefault();
+        const x = pointX - container.offsetLeft;
+        const walk = (x - startX) * SCROLL_MULTIPLIER;
+        container.scrollLeft = scrollLeft - walk;
+      }
+    };
+
+    const touchEndHandler = () => {
+      setIsDragging(false);
+      isHorizontalRef.current = false;
+      initialTouchRef.current = false;
+    };
+
+    container.addEventListener("touchstart", touchStartHandler, {
+      passive: false,
+    });
+    container.addEventListener("touchmove", touchMoveHandler, {
+      passive: false,
+    });
+    container.addEventListener("touchend", touchEndHandler, { passive: false });
+
+    return () => {
+      container.removeEventListener("touchstart", touchStartHandler);
+      container.removeEventListener("touchmove", touchMoveHandler);
+      container.removeEventListener("touchend", touchEndHandler);
+    };
+  }, [isDragging, scrollLeft, startX, startY]);
+
   const scroll = useCallback(({ direction }: ScrollProps) => {
     const container = containerRef.current;
     if (!container) return;
@@ -52,51 +110,6 @@ export default function Projects() {
     });
   }, []);
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    setIsDragging(true);
-    setStartX(e.touches[0].pageX - container.offsetLeft);
-    setStartY(e.touches[0].pageY);
-    setScrollLeft(container.scrollLeft);
-    isHorizontalRef.current = false;
-    initialTouchRef.current = true;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
-
-    const container = containerRef.current;
-    if (!container) return;
-
-    const pointX = e.touches[0].pageX;
-    const pointY = e.touches[0].pageY;
-    const deltaX = Math.abs(pointX - container.offsetLeft - startX);
-    const deltaY = Math.abs(pointY - startY);
-
-    if (
-      initialTouchRef.current &&
-      (deltaX > TOUCH_SLOP || deltaY > TOUCH_SLOP)
-    ) {
-      initialTouchRef.current = false;
-      isHorizontalRef.current = deltaX > deltaY;
-    }
-
-    if (isHorizontalRef.current) {
-      e.preventDefault();
-      const x = pointX - container.offsetLeft;
-      const walk = (x - startX) * SCROLL_MULTIPLIER;
-      container.scrollLeft = scrollLeft - walk;
-    }
-  };
-
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-    isHorizontalRef.current = false;
-    initialTouchRef.current = false;
-  };
-
   return (
     <section className="w-full">
       <Title>{projectsData.title}</Title>
@@ -106,12 +119,9 @@ export default function Projects() {
           ref={containerRef}
           className="flex select-none gap-6 overflow-x-hidden scroll-smooth px-2 py-4"
           onScroll={checkScroll}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
         >
           {projectsData.projects.map((project) => (
-            <ProjectCard key={project.id} project={project}/>
+            <ProjectCard key={project.id} project={project} />
           ))}
         </div>
 
