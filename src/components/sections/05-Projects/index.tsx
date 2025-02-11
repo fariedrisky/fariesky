@@ -112,38 +112,36 @@ export default function Projects() {
 
   return (
     <section className="w-full">
-      <Title>{projectsData.title}</Title>
+      <Title marginBottom="!mb-2">{projectsData.title}</Title>
 
-      <div className="relative">
-        <div
-          ref={containerRef}
-          className="flex select-none gap-6 overflow-x-hidden scroll-smooth px-2 py-4"
-          onScroll={checkScroll}
-        >
-          {projectsData.projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
-        </div>
-
-        {canScrollLeft && (
-          <button
-            onClick={() => scroll({ direction: "left" })}
-            className="absolute -left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-neutral-800/30 p-1.5 text-white shadow-md transition duration-150 hover:bg-neutral-800/40 active:scale-95"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft size={30} />
-          </button>
-        )}
-        {canScrollRight && (
-          <button
-            onClick={() => scroll({ direction: "right" })}
-            className="absolute -right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-neutral-800/30 p-1.5 text-white shadow-md transition duration-150 hover:bg-neutral-800/40 active:scale-95"
-            aria-label="Scroll right"
-          >
-            <ChevronRight size={30} />
-          </button>
-        )}
+      <div
+        ref={containerRef}
+        className="flex select-none gap-6 overflow-x-hidden scroll-smooth px-2 py-4"
+        onScroll={checkScroll}
+      >
+        {projectsData.projects.map((project) => (
+          <ProjectCard key={project.id} project={project} />
+        ))}
       </div>
+
+      {canScrollLeft && (
+        <button
+          onClick={() => scroll({ direction: "left" })}
+          className="absolute -left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-neutral-800/30 p-1.5 text-white shadow-md transition duration-150 hover:bg-neutral-800/40 active:scale-95"
+          aria-label="Scroll left"
+        >
+          <ChevronLeft size={30} />
+        </button>
+      )}
+      {canScrollRight && (
+        <button
+          onClick={() => scroll({ direction: "right" })}
+          className="absolute -right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-neutral-800/30 p-1.5 text-white shadow-md transition duration-150 hover:bg-neutral-800/40 active:scale-95"
+          aria-label="Scroll right"
+        >
+          <ChevronRight size={30} />
+        </button>
+      )}
     </section>
   );
 }
