@@ -8,7 +8,7 @@ import ProjectCard from "@/components/ui/ProjectCard";
 // Constants
 const CARD_WIDTH = 280;
 const SCROLL_MULTIPLIER = 2;
-const TOUCH_SLOP = 5; // Minimum pixel movement to determine scroll direction
+const TOUCH_SLOP = 5;
 
 interface ScrollProps {
   direction: "left" | "right";
@@ -21,10 +21,9 @@ export default function Projects() {
   const [startX, setStartX] = useState(0);
   const [startY, setStartY] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
-  const [isHorizontalScroll, setIsHorizontalScroll] = useState<boolean | null>(
-    null,
-  );
   const containerRef = useRef<HTMLDivElement>(null);
+  const isHorizontalRef = useRef(false);
+  const initialTouchRef = useRef(false);
 
   const checkScroll = useCallback(() => {
     const container = containerRef.current;
@@ -53,69 +52,49 @@ export default function Projects() {
     });
   }, []);
 
-  const handleDragStart = useCallback((pointX: number, pointY: number) => {
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     const container = containerRef.current;
     if (!container) return;
 
     setIsDragging(true);
-    setStartX(pointX - container.offsetLeft);
-    setStartY(pointY);
+    setStartX(e.touches[0].pageX - container.offsetLeft);
+    setStartY(e.touches[0].pageY);
     setScrollLeft(container.scrollLeft);
-    setIsHorizontalScroll(null);
-  }, []);
-
-  const handleDragMove = useCallback(
-    (pointX: number, pointY: number) => {
-      if (!isDragging) return;
-
-      const container = containerRef.current;
-      if (!container) return;
-
-      const deltaX = Math.abs(pointX - container.offsetLeft - startX);
-      const deltaY = Math.abs(pointY - startY);
-
-      // Determine scroll direction if not yet determined
-      if (
-        isHorizontalScroll === null &&
-        (deltaX > TOUCH_SLOP || deltaY > TOUCH_SLOP)
-      ) {
-        const isHorizontal = deltaX > deltaY;
-        setIsHorizontalScroll(isHorizontal);
-      }
-
-      // Only handle horizontal scrolling
-      if (isHorizontalScroll) {
-        const x = pointX - container.offsetLeft;
-        const walk = (x - startX) * SCROLL_MULTIPLIER;
-        container.scrollLeft = scrollLeft - walk;
-      }
-    },
-    [isDragging, startX, startY, scrollLeft, isHorizontalScroll],
-  );
-
-  const handleDragEnd = useCallback(() => {
-    setIsDragging(false);
-    setIsHorizontalScroll(null);
-  }, []);
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    handleDragStart(e.pageX, e.pageY);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    handleDragMove(e.pageX, e.pageY);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    handleDragStart(e.touches[0].pageX, e.touches[0].pageY);
+    isHorizontalRef.current = false;
+    initialTouchRef.current = true;
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (isHorizontalScroll) {
-      e.preventDefault(); // Prevent vertical scrolling only when horizontal scrolling is detected
+    if (!isDragging) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const pointX = e.touches[0].pageX;
+    const pointY = e.touches[0].pageY;
+    const deltaX = Math.abs(pointX - container.offsetLeft - startX);
+    const deltaY = Math.abs(pointY - startY);
+
+    if (
+      initialTouchRef.current &&
+      (deltaX > TOUCH_SLOP || deltaY > TOUCH_SLOP)
+    ) {
+      initialTouchRef.current = false;
+      isHorizontalRef.current = deltaX > deltaY;
     }
-    handleDragMove(e.touches[0].pageX, e.touches[0].pageY);
+
+    if (isHorizontalRef.current) {
+      e.preventDefault();
+      const x = pointX - container.offsetLeft;
+      const walk = (x - startX) * SCROLL_MULTIPLIER;
+      container.scrollLeft = scrollLeft - walk;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    isHorizontalRef.current = false;
+    initialTouchRef.current = false;
   };
 
   return (
@@ -125,18 +104,14 @@ export default function Projects() {
       <div className="relative mt-8">
         <div
           ref={containerRef}
-          className="flex cursor-grab touch-pan-x select-none gap-6 overflow-x-hidden scroll-smooth px-2 py-4 active:cursor-grabbing"
+          className="flex select-none gap-6 overflow-x-hidden scroll-smooth px-2 py-4"
           onScroll={checkScroll}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleDragEnd}
-          onMouseLeave={handleDragEnd}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
-          onTouchEnd={handleDragEnd}
+          onTouchEnd={handleTouchEnd}
         >
           {projectsData.projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <ProjectCard key={project.id} project={project}/>
           ))}
         </div>
 
