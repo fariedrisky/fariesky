@@ -30,7 +30,7 @@ export const OpenPDFButton = () => {
 
   return (
     <Button variant="outline" className="w-full rounded-xl" onClick={openPDF}>
-      View CV
+      View CV/Resume
     </Button>
   );
 };
