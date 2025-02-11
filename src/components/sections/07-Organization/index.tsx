@@ -39,7 +39,7 @@ export default function Organization() {
           alt={`${organization.name} logo`}
           width={40}
           height={50}
-          className="object-contain"
+          className="h-[40px] w-[50px] object-contain"
         />
       );
     }
@@ -63,14 +63,14 @@ export default function Organization() {
       <div className="space-y-4">
         {organization.organizations.map(
           (organization: OrganizationType, index: number) => (
-            <Card key={index} className="overflow-hidden !bg-white !p-0">
+            <Card key={index} className="!p-0">
               <div
-                className="cursor-pointer transition-colors duration-300 hover:bg-gray-50"
+                className="relative cursor-pointer"
                 onClick={() =>
                   setExpandedIndex(expandedIndex === index ? null : index)
                 }
               >
-                <CardContent className="flex items-start justify-between !p-4">
+                <CardContent className="flex flex-col justify-between p-4 sm:flex-row sm:items-start">
                   <div className="flex gap-4">
                     <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl">
                       <LogoComponent
@@ -78,17 +78,27 @@ export default function Organization() {
                         index={index}
                       />
                     </div>
-                    <div>
-                      <h3 className="text-lg font-semibold">
+                    <div className="flex flex-col pr-8">
+                      <h3 className="text-base font-semibold sm:text-lg">
                         {organization.name}
                       </h3>
-                      <p className="text-gray-600">{organization.role}</p>
+                      <p className="text-sm text-gray-600 sm:text-sm">
+                        {organization.role}
+                      </p>
+                      <div className="mt-1 flex flex-col sm:hidden">
+                        <span className="text-sm text-gray-500">
+                          {organization.period}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {organization.location}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="hidden flex-col items-end gap-2 sm:flex">
                     <div className="flex flex-col items-end">
                       <div className="flex items-center gap-4 text-gray-500">
-                        <span className="text-right text-sm">
+                        <span className="text-right text-xs sm:text-sm">
                           {organization.period}
                         </span>
                         <div className="flex h-6 w-6 items-center justify-center">
@@ -105,8 +115,23 @@ export default function Organization() {
                           </div>
                         </div>
                       </div>
-                      <div className="mr-10 flex items-center gap-1 text-sm text-gray-500">
+                      <div className="mr-10 flex items-center gap-1 text-xs text-gray-500 sm:text-sm">
                         <span>{organization.location}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute right-4 top-4">
+                    <div className="flex h-6 w-6 items-center justify-center sm:hidden">
+                      <div
+                        className={`transform transition-transform duration-300 ${
+                          expandedIndex === index ? "rotate-180" : ""
+                        }`}
+                      >
+                        {expandedIndex === index ? (
+                          <X size={20} />
+                        ) : (
+                          <ChevronDown size={20} />
+                        )}
                       </div>
                     </div>
                   </div>

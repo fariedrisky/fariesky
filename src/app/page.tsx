@@ -13,6 +13,7 @@ import Course from "@/components/sections/08-Course-Training";
 import Languages from "@/components/sections/09-Languages";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import ViewCounter from "@/components/ui/ViewCounter";
+import Organization from "@/components/sections/07-Organization";
 
 export default function Home() {
   return (
@@ -46,15 +47,18 @@ export default function Home() {
               <Education />
             </AnimatedSection>
             <AnimatedSection delay={0.6}>
-              <Course />
+              <Organization />
             </AnimatedSection>
             <AnimatedSection delay={0.7}>
-              <Languages />
+              <Course />
             </AnimatedSection>
             <AnimatedSection delay={0.8}>
-              <Links />
+              <Languages />
             </AnimatedSection>
             <AnimatedSection delay={0.9}>
+              <Links />
+            </AnimatedSection>
+            <AnimatedSection delay={1.0}>
               <Contact />
             </AnimatedSection>
           </div>
@@ -83,15 +87,18 @@ export default function Home() {
             <Education />
           </AnimatedSection>
           <AnimatedSection delay={0.6}>
-            <Course />
+            <Organization />
           </AnimatedSection>
           <AnimatedSection delay={0.7}>
-            <Languages />
+            <Course />
           </AnimatedSection>
           <AnimatedSection delay={0.8}>
-            <Links />
+            <Languages />
           </AnimatedSection>
           <AnimatedSection delay={0.9}>
+            <Links />
+          </AnimatedSection>
+          <AnimatedSection delay={1.0}>
             <Contact />
           </AnimatedSection>
         </div>
@@ -119,15 +126,18 @@ export default function Home() {
             <Education />
           </AnimatedSection>
           <AnimatedSection delay={0.6}>
-            <Course />
+            <Organization />
           </AnimatedSection>
           <AnimatedSection delay={0.7}>
-            <Languages />
+            <Course />
           </AnimatedSection>
           <AnimatedSection delay={0.8}>
-            <Links />
+            <Languages />
           </AnimatedSection>
           <AnimatedSection delay={0.9}>
+            <Links />
+          </AnimatedSection>
+          <AnimatedSection delay={1.0}>
             <Contact />
           </AnimatedSection>
         </div>
