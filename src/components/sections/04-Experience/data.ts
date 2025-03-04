@@ -6,7 +6,7 @@ export const experience: ExperienceData = {
         {
             company: "Kensen Grik Teknokons",
             role: "Frontend Developer",
-            period: "Nov 2024 - Present",
+            period: "Nov 2024 - Mar 2025",
             location: "Banda Aceh, Indonesia",
             description: [
                 "Integrate APIs into the CMD user interface to ensure seamless data flow and interaction.",

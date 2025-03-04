@@ -21,12 +21,48 @@ const VISITOR_ID_KEY = "visitor_id";
 const MONTHLY_VISIT_KEY = "monthly_visit";
 const ONLINE_HEARTBEAT_INTERVAL = 20000; // 20 seconds
 
+// Function to get current date in Indonesian timezone (GMT+7)
+function getIndonesianDate(): Date {
+  // Create date with UTC time
+  const now = new Date();
+
+  // Get UTC time in milliseconds
+  const utcTime = now.getTime() + now.getTimezoneOffset() * 60000;
+
+  // Add 7 hours for Indonesia's GMT+7
+  const indonesiaTime = new Date(utcTime + 7 * 3600000);
+
+  return indonesiaTime;
+}
+
+// Format the month in English (short format)
+function formatMonth(date: Date): string {
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  return monthNames[date.getMonth()];
+}
+
 export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
-  const [data, setData] = useState<VisitorData>({
-    monthlyCount: 0,
-    month: "",
-    year: new Date().getFullYear(),
-    onlineCount: 0,
+  const [data, setData] = useState<VisitorData>(() => {
+    const indoDate = getIndonesianDate();
+    return {
+      monthlyCount: 0,
+      month: formatMonth(indoDate),
+      year: indoDate.getFullYear(),
+      onlineCount: 0,
+    };
   });
   const [loading, setLoading] = useState(true);
   const [visitorId, setVisitorId] = useState<string>("");
@@ -37,8 +73,8 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
       if (!visitorId) return;
 
       try {
-        const now = new Date();
-        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const indoDate = getIndonesianDate();
+        const currentMonth = `${indoDate.getFullYear()}-${String(indoDate.getMonth() + 1).padStart(2, "0")}`;
         const lastVisitMonth = Cookies.get(MONTHLY_VISIT_KEY);
         const isNewVisit = !lastVisitMonth || lastVisitMonth !== currentMonth;
 
@@ -51,6 +87,7 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
           body: JSON.stringify({
             status: isOnline ? "online" : "offline",
             isNewVisit,
+            timezone: "Asia/Jakarta", // Adding timezone info to the request
           }),
         });
 
@@ -61,14 +98,28 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
 
         const result = await response.json();
         if (result.data) {
+          // If the server doesn't return the month in English short format, format it here
+          if (result.data.month && !isNaN(result.data.month)) {
+            const monthDate = new Date(
+              result.data.year,
+              parseInt(result.data.month) - 1,
+            );
+            result.data.month = formatMonth(monthDate);
+          }
+
           setData(result.data);
           setLoading(false);
 
           // Update monthly visit cookie if it's a new visit
           if (isNewVisit) {
+            const monthEnd = new Date(
+              indoDate.getFullYear(),
+              indoDate.getMonth() + 1,
+              0,
+            );
             Cookies.set(MONTHLY_VISIT_KEY, currentMonth, {
               // Set cookie to expire at the end of the month
-              expires: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+              expires: monthEnd,
               sameSite: "Strict",
               path: "/",
             });
@@ -128,6 +179,12 @@ export default function ViewCounter({ variant = "desktop" }: ViewCounterProps) {
     // Set up Pusher subscription
     const channel = pusherClient.subscribe("visitors-channel");
     channel.bind("visitor-update", (newData: VisitorData) => {
+      // If the server doesn't return the month in English short format, format it here
+      if (newData.month && !isNaN(parseInt(newData.month))) {
+        const monthDate = new Date(newData.year, parseInt(newData.month) - 1);
+        newData.month = formatMonth(monthDate);
+      }
+
       setData(newData);
       setLoading(false);
     });
