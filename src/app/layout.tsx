@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { DM_Sans, DM_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, DM_Mono } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
-const dm_sans = DM_Sans({
+const jakarta_sans = Plus_Jakarta_Sans({
   variable: "--font-dm-sans",
   subsets: ["latin"],
 });
@@ -26,7 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${dm_sans.className} ${dm_mono.variable} antialiased`}>
+      <body
+        className={`${jakarta_sans.className} ${dm_mono.variable} antialiased`}
+      >
         <Toaster position="top-center" />
         {children}
       </body>
