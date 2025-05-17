@@ -8,9 +8,17 @@ export const projectsData: ProjectsData = {
             title: "BP Project Booth",
             description: "The best photo booth vendor website that offers various interesting photo booth information and services, complete with the convenience of ordering online.",
             image: [
-                "/assets/images/projects/bp.jpg",
-                "/assets/images/projects/bp2.jpg",
-                "/assets/images/projects/bp3.jpg"
+                "/assets/images/projects/bp-project/1.jpg",
+                "/assets/images/projects/bp-project/2.jpg",
+                "/assets/images/projects/bp-project/3.jpg",
+                "/assets/images/projects/bp-project/4.jpg",
+                "/assets/images/projects/bp-project/5.jpg",
+                "/assets/images/projects/bp-project/6.jpg",
+                "/assets/images/projects/bp-project/7.jpg",
+                "/assets/images/projects/bp-project/8.jpg",
+                "/assets/images/projects/bp-project/9.jpg",
+                "/assets/images/projects/bp-project/10.jpg",
+                "/assets/images/projects/bp-project/11.jpg",
             ],
             url: "https://bp-projectbooth.com",
             techStack: [
