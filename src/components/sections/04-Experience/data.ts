@@ -7,7 +7,7 @@ export const experience: ExperienceData = {
             company: "Kementerian Ketenagakerjaan Republik Indonesia",
             role: "Pranata Komputer Ahli Pertama (CPNS)",
             period: "May 2025 - Present",
-            location: "Setiabudi, Jakarta Selatan, Indonesia",
+            location: "South Jakarta, Indonesia",
             description: [
                 "Assigned to the Direktorat Bina Penempatan Tenaga Kerja under the Direktorat Jenderal Pembinaan Tenaga Kerja dan Perluasan Kesempatan Kerja (Ditjen Binapenta PKK), Kementerian Ketenagakerjaan Republik Indonesia.",
                 "Support the implementation of workforce placement programs and policies through information technology solutions.",

@@ -86,7 +86,7 @@ export default function Experience() {
                         <span className="text-sm text-gray-500">
                           {experience.period}
                         </span>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-right text-sm text-gray-500">
                           {experience.location}
                         </span>
                       </div>
