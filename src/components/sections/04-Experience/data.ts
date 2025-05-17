@@ -4,6 +4,19 @@ export const experience: ExperienceData = {
     title: "Experience",
     experiences: [
         {
+            company: "Kementerian Ketenagakerjaan Republik Indonesia",
+            role: "Pranata Komputer Ahli Pertama (CPNS)",
+            period: "May 2025 - Present",
+            location: "Setiabudi, Jakarta Selatan, Indonesia",
+            description: [
+                "Assigned to the Direktorat Bina Penempatan Tenaga Kerja under the Direktorat Jenderal Pembinaan Tenaga Kerja dan Perluasan Kesempatan Kerja (Ditjen Binapenta PKK), Kementerian Ketenagakerjaan Republik Indonesia.",
+                "Support the implementation of workforce placement programs and policies through information technology solutions.",
+                "Manage and utilize labor market data to support policy development and decision-making.",
+                "Contribute to the digital transformation of public services related to workforce placement."
+            ],
+            logo: "/assets/images/logo/experience/kemnaker.png",
+        },
+        {
             company: "Kensen Grik Teknokons",
             role: "Frontend Developer",
             period: "Nov 2024 - Mar 2025",
