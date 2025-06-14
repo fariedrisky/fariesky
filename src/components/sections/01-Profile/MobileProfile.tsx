@@ -35,14 +35,14 @@ export default function MobileProfile({ onContactClick }: MobileProfileProps) {
             </div>
 
             <div className="flex flex-1 flex-col space-y-2 pr-8">
-              <h2 className="text-lg font-semibold text-gray-800">
+              <h2 className="text-md font-semibold text-gray-800">
                 {profile.name}
               </h2>
-              <p className="text-sm text-gray-600">{profile.role}</p>
+              <p className="text-xs text-gray-600">{profile.role}</p>
               <div className="flex flex-col space-y-2">
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">
+                  <span className="text-xs text-gray-600">
                     {profile.location}
                   </span>
                 </div>
@@ -57,13 +57,13 @@ export default function MobileProfile({ onContactClick }: MobileProfileProps) {
                     <div className="flex flex-col space-y-2">
                       <div className="flex items-center gap-2">
                         <Phone className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">
+                        <span className="text-xs text-gray-600">
                           {profile.phone}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Mail className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">
+                        <span className="text-xs text-gray-600">
                           {profile.email}
                         </span>
                       </div>
